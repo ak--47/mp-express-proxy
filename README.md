@@ -11,8 +11,8 @@ To use this server, you need to set the following environment variables:
 On the client side, you should use the following configuration for initializing mixpanel:
 ```javascript
 mixpanel.init("dummyToken", {
-			api_host: PROXY_URL,		
-			api_payload_format: 'json'
+	api_host: PROXY_URL,		
+	api_payload_format: 'json'
 })
 ```
 
