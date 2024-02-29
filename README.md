@@ -14,9 +14,13 @@ You can optionally set the following environment variables:
 
 check `deploy.sh` for an example of how to deploy this server to google cloud run or use the deploy button below!
 
-[![Google Cloud Btn]][Google Cloud Deploy]
+
 [Google Cloud Btn]: https://binbashbanana.github.io/deploy-buttons/buttons/remade/googlecloud.svg
 [Google Cloud Deploy]: https://deploy.cloud.run?git_repo=https://github.com/ak--47/mp-express-proxy
+
+
+[![Google Cloud Btn]][Google Cloud Deploy]
+
 
 
 ## Usage

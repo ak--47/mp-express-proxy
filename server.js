@@ -2,6 +2,7 @@ const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const bodyParser = require('body-parser');
 const app = express();
+const fetch = require('fetch-retry')(global.fetch);
 require('dotenv').config();
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.urlencoded({ extended: true }));
