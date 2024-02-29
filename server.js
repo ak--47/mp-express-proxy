@@ -2,16 +2,27 @@ const express = require('express');
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const bodyParser = require('body-parser');
 const app = express();
-const port = process.env.PORT || 8080;
 require('dotenv').config();
-
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.urlencoded({ extended: true }));
+
+// Environment Variables
+const port = process.env.PORT || 8080;
+const FRONTEND_URL = process.env.FRONTEND_URL || "*";
+const MIXPANEL_TOKEN = process.env.MIXPANEL_TOKEN;
+const REGION = process.env.REGION || 'US';
+
+const BASE_URL = `https://api${REGION?.toUpperCase() === "EU" ? '-eu' : ''}.mixpanel.com`;
+
+if (!MIXPANEL_TOKEN) {
+	console.error('MIXPANEL_TOKEN is not set; this is required to run the proxy server. Please set it as an environment variable.');
+	process.exit(1);
+}
 
 
 // CORS Middleware
 app.use((req, res, next) => {
-	res.header('Access-Control-Allow-Origin', process.env.FRONTEND_URL || "*");
+	res.header('Access-Control-Allow-Origin', FRONTEND_URL);
 	res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 	res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 	res.header('Access-Control-Allow-Credentials', 'true');
@@ -20,7 +31,7 @@ app.use((req, res, next) => {
 
 app.options('*', (req, res) => {
 	// Set CORS headers here
-	res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
+	res.header('Access-Control-Allow-Origin', FRONTEND_URL);
 	res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
 	res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
 	res.header('Access-Control-Allow-Credentials', 'true');
@@ -52,28 +63,44 @@ app.use('/decide', createProxyMiddleware({
 // custom Handler for /track
 app.post('/track', async (req, res) => {
 	try {
-		const eventData = JSON.parse(req.body.data);
-		const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress;
+		if (!req.body.data) return res.status(400).send('No data provided');
+		const params = req.query;
+		const eventData = parseIncomingData(req.body.data);
+		const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.connection.remoteAddress;
 		for (let event of eventData) {
-			if (event.properties && event.properties.token) delete event.properties.token;
-			if (event.properties) event.properties.ip = ip; 
+			if (!event.properties) event.properties = {};
+			event.properties.token = MIXPANEL_TOKEN;
+			if (params.ip === '1') event.properties.ip = ip;
 		}
 
-		const importRequest = await fetch('https://api.mixpanel.com/import?verbose=1', {
-			method: 'POST',
-			body: JSON.stringify(eventData),
-			headers: {
-				'Content-Type': 'application/json',
-				'Authorization': 'Basic ' + Buffer.from(process.env.MIXPANEL_TOKEN + ':').toString('base64')
-			},
-		});
-
-		const importResponse = await importRequest.json();
-		res.send(importResponse);
+		const flushData = await makeRequest(`${BASE_URL}/track?verbose=1`, eventData);
+		res.send(flushData);
 
 	} catch (error) {
 		console.error(error);
-		res.status(500).send('An error occurred');
+		res.status(500).send('An error occurred calling /track');
+	}
+});
+
+
+// custom Handler for /engage
+app.post('/engage', async (req, res) => {
+	try {
+		if (!req.body.data) return res.status(400).send('No data provided');
+		const params = req.query;
+		const profileData = parseIncomingData(req.body.data);
+		const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.connection.remoteAddress;
+		for (let update of profileData) {
+			update.$token = MIXPANEL_TOKEN;
+			if (params.ip === '1') update.$ip = ip;
+		}
+
+		const flushData = await makeRequest(`${BASE_URL}/engage?verbose=1`, profileData);
+		res.send(flushData);
+
+	} catch (error) {
+		console.error(error);
+		res.status(500).send('An error occurred calling /engage');
 	}
 });
 
@@ -82,3 +109,49 @@ app.post('/track', async (req, res) => {
 app.listen(port, () => {
 	console.log(`proxy alive on ${port}`);
 });
+
+
+function parseIncomingData(reqBody) {
+	let data;
+	if (typeof reqBody === 'string') {
+		if (reqBody.startsWith("[") || reqBody.startsWith("{")) {
+			try {
+				data = JSON.parse(reqBody);
+			}
+			catch (e) {
+				// probably not JSON
+			}
+		}
+
+		// probably form data so unbase64 it
+		else {
+			try {
+				data = JSON.parse(Buffer.from(reqBody, 'base64').toString('utf-8'));
+			}
+			catch (e) {
+				throw new Error('unable to parse incoming data');
+			}
+
+		}
+	}
+	
+	if (Array.isArray(data)) return data;
+	else if (data) return [data];
+	else {
+		throw new Error('unable to parse incoming data');
+	}
+}
+
+
+async function makeRequest(url, data) {
+	const request = await fetch(url, {
+		method: 'POST',
+		body: JSON.stringify(data),
+		headers: {
+			'Content-Type': 'application/json'
+		},
+	});
+
+	const response = await request.json();
+	return response;
+}
