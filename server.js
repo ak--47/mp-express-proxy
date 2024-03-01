@@ -84,6 +84,8 @@ app.post('/track', async (req, res) => {
 });
 
 
+
+
 // custom Handler for /engage
 app.post('/engage', async (req, res) => {
 	try {
@@ -124,7 +126,7 @@ function parseIncomingData(reqBody) {
 			}
 		}
 
-		// probably form data so unbase64 it
+		// probably form data
 		else {
 			try {
 				data = JSON.parse(Buffer.from(reqBody, 'base64').toString('utf-8'));
@@ -135,7 +137,7 @@ function parseIncomingData(reqBody) {
 
 		}
 	}
-	
+
 	if (Array.isArray(data)) return data;
 	else if (data) return [data];
 	else {
