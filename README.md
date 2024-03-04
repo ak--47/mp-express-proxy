@@ -42,3 +42,7 @@ mixpanel.track("test", { "foo": "bar" })
 (see `./demo/index.html` for a full working example)
 
 
+## Demo
+
+
+<a href="https://www.loom.com/share/fc0acf9214e34165958acdbbf4eeef1c?sid=07d6101d-5924-4ea9-80c2-d780fee2111f"><img src="https://aktunes.neocities.org/token%20hide.png"></a>
