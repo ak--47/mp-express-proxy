@@ -66,7 +66,7 @@ app.post('/track', async (req, res) => {
 	try {
 		if (!req.body.data) return res.status(400).send('No data provided');
 		const params = req.query;
-		const eventData = parseIncomingData(req.body.data);
+		const eventData = parseIncomingData(req.body?.data || req.body);
 		const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.connection.remoteAddress;
 		for (let event of eventData) {
 			if (!event.properties) event.properties = {};
@@ -91,7 +91,7 @@ app.post('/engage', async (req, res) => {
 	try {
 		if (!req.body.data) return res.status(400).send('No data provided');
 		const params = req.query;
-		const profileData = parseIncomingData(req.body.data);
+		const profileData = parseIncomingData(req.body?.data || req.body);
 		const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.connection.remoteAddress;
 		for (let update of profileData) {
 			update.$token = MIXPANEL_TOKEN;
@@ -115,33 +115,41 @@ app.listen(port, () => {
 
 
 function parseIncomingData(reqBody) {
-	let data;
-	if (typeof reqBody === 'string') {
-		if (reqBody.startsWith("[") || reqBody.startsWith("{")) {
-			try {
-				data = JSON.parse(reqBody);
+	try {
+		let data;
+		if (typeof reqBody === 'string') {
+			if (reqBody.startsWith("[") || reqBody.startsWith("{")) {
+				try {
+					data = JSON.parse(reqBody);
+				}
+				catch (e) {
+					// probably not JSON
+				}
 			}
-			catch (e) {
-				// probably not JSON
+
+			// probably form data
+			else {
+				try {
+					data = JSON.parse(Buffer.from(reqBody, 'base64').toString('utf-8'));
+				}
+				catch (e) {
+					throw new Error('unable to parse incoming data');
+				}
+
 			}
 		}
 
-		// probably form data
+		if (Array.isArray(data)) return data;
+		else if (data) return [data];
 		else {
-			try {
-				data = JSON.parse(Buffer.from(reqBody, 'base64').toString('utf-8'));
-			}
-			catch (e) {
-				throw new Error('unable to parse incoming data');
-			}
-
+			throw new Error('unable to parse incoming data');
 		}
 	}
-
-	if (Array.isArray(data)) return data;
-	else if (data) return [data];
-	else {
-		throw new Error('unable to parse incoming data');
+	catch (e) {
+		console.error(e);
+		console.error('unable to parse incoming data');
+		console.error('reqBody:', reqBody);
+		return [];
 	}
 }
 
