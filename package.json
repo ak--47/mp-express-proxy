@@ -1,14 +1,14 @@
 {
   "name": "mp-express-proxy",
   "version": "1.0.0",
-  "description": "",
+  "description": "a proxy for communicating with mixpanel's js SDK",
   "main": "index.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "nodemon --inspect server.js",
+    "start": "RUNTIME=prod node server.js",
+    "dev": "RUNTIME=dev nodemon --inspect server.js",
     "deploy": "./deploy.sh",
     "frontend": "npx serve ./demo/",
-	"test": "jest"
+    "test": "jest"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +21,7 @@
     "http-proxy-middleware": "^2.0.6"
   },
   "devDependencies": {
-    "jest": "^29.7.0"
+    "jest": "^29.7.0",
+    "nodemon": "^3.1.0"
   }
 }

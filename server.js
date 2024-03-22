@@ -12,6 +12,7 @@ const port = process.env.PORT || 8080;
 const FRONTEND_URL = process.env.FRONTEND_URL || "*";
 const MIXPANEL_TOKEN = process.env.MIXPANEL_TOKEN;
 const REGION = process.env.REGION || 'US';
+const RUNTIME = process.env.RUNTIME || 'prod';
 
 const BASE_URL = `https://api${REGION?.toUpperCase() === "EU" ? '-eu' : ''}.mixpanel.com`;
 
@@ -110,7 +111,7 @@ app.post('/engage', async (req, res) => {
 
 
 app.listen(port, () => {
-	console.log(`proxy alive on ${port}`);
+	if (RUNTIME === 'dev') console.log(`proxy alive on ${port}`);
 });
 
 
@@ -155,6 +156,8 @@ function parseIncomingData(reqBody) {
 
 
 async function makeRequest(url, data) {
+	if (RUNTIME === 'dev') console.log(`\nrequest to ${shortUrl(url)} with data:\n${pp(data)} ${sep()}`);
+
 	const request = await fetch(url, {
 		method: 'POST',
 		body: JSON.stringify(data),
@@ -163,6 +166,26 @@ async function makeRequest(url, data) {
 		},
 	});
 
+	const { status = 0, statusText = "" } = request;
 	const response = await request.json();
+
+	if (RUNTIME === 'dev') console.log(`got ${status} ${statusText} from ${shortUrl(url)}:\n${pp(response)} ${sep()}`);
+
 	return response;
+}
+
+
+
+// helpers
+
+function pp(obj) {
+	return JSON.stringify(obj, null, 2);
+}
+
+function sep(){
+	return `\n--------\n`
+}
+
+function shortUrl(url) {
+	return new URL(url).pathname;
 }
