@@ -8,7 +8,7 @@
     "dev": "RUNTIME=dev nodemon --inspect server.js",
     "deploy": "./deploy.sh",
     "frontend": "npx serve ./demo/",
-    "test": "jest"
+    "test": "npm run dev && jest"
   },
   "keywords": [],
   "author": "",

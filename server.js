@@ -44,7 +44,8 @@ app.options('*', (req, res) => {
 app.use('/lib.min.js', createProxyMiddleware({
 	target: 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js',
 	changeOrigin: true,
-	pathRewrite: { '^/lib.min.js': '' }
+	pathRewrite: { '^/lib.min.js': '' },
+	logLevel: RUNTIME === "prod" ? "error" : "debug"
 }));
 
 // Proxy for /lib.js
@@ -79,7 +80,7 @@ app.post('/track', async (req, res) => {
 		res.send(flushData);
 
 	} catch (error) {
-		console.error(error);
+		if (RUNTIME === 'dev') console.error(error);
 		res.status(500).send('An error occurred calling /track');
 	}
 });
@@ -103,7 +104,7 @@ app.post('/engage', async (req, res) => {
 		res.send(flushData);
 
 	} catch (error) {
-		console.error(error);
+		if (RUNTIME === 'dev') console.error(error);
 		res.status(500).send('An error occurred calling /engage');
 	}
 });
