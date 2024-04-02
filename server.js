@@ -4,8 +4,11 @@ const bodyParser = require('body-parser');
 const app = express();
 const fetch = require('fetch-retry')(global.fetch);
 require('dotenv').config();
+// Use bodyParser to parse application/x-www-form-urlencoded
 app.use(bodyParser.urlencoded({ extended: true }));
-app.use(express.urlencoded({ extended: true }));
+
+// Use bodyParser to parse text/plain content-type
+app.use(bodyParser.text({ type: 'text/plain' }));
 
 // Environment Variables
 const port = process.env.PORT || 8080;
@@ -66,7 +69,7 @@ app.use('/decide', createProxyMiddleware({
 // custom Handler for /track
 app.post('/track', async (req, res) => {
 	try {
-		if (!req.body.data) return res.status(400).send('No data provided');
+		if (!req.body) return res.status(400).send('No data provided');
 		const params = req.query;
 		const eventData = parseIncomingData(req.body?.data || req.body);
 		const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.connection.remoteAddress;
@@ -119,6 +122,9 @@ app.listen(port, () => {
 function parseIncomingData(reqBody) {
 	try {
 		let data;
+		if (typeof reqBody === 'object' && reqBody?.data) reqBody = reqBody.data;
+
+		// handling JSON
 		if (typeof reqBody === 'string') {
 			if (reqBody.startsWith("[") || reqBody.startsWith("{")) {
 				try {
@@ -126,16 +132,26 @@ function parseIncomingData(reqBody) {
 				}
 				catch (e) {
 					// probably not JSON
+					throw new Error('unable to parse incoming data');
 				}
 			}
 
-			// probably form data
+			// handling FORM
 			else {
 				try {
 					data = JSON.parse(Buffer.from(reqBody, 'base64').toString('utf-8'));
 				}
 				catch (e) {
-					throw new Error('unable to parse incoming data');
+					// handling sendBeacon
+					try {
+						const body = reqBody.split("=").splice(-1).pop();
+						data = JSON.parse(Buffer.from(decodeURIComponent(body), 'base64').toString('utf-8'));
+					}
+					catch (e) {
+						// we don't know what this is
+						throw new Error('unable to parse incoming data');
+					}
+
 				}
 
 			}
@@ -183,8 +199,8 @@ function pp(obj) {
 	return JSON.stringify(obj, null, 2);
 }
 
-function sep(){
-	return `\n--------\n`
+function sep() {
+	return `\n--------\n`;
 }
 
 function shortUrl(url) {
