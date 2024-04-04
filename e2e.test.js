@@ -1,6 +1,7 @@
 const { spawn } = require('child_process');
+const { parseSDKData } = require('./parser');
 
-describe('API Tests', () => {
+describe('DATA', () => {
 	test('POST /track (json)', async () => {
 		const response = await fetch('http://localhost:8080/track', {
 			method: 'POST',
@@ -73,4 +74,102 @@ describe('API Tests', () => {
 		const data = await response.json();
 		expect(data).toEqual({ error: null, status: 1 });
 	});
+});
+
+describe('PROXY', ()=>{
+	test('GET /lib.min.js', async () => {
+        const response = await fetch('http://localhost:8080/lib.min.js', {
+            method: 'GET'
+        });
+        const contentType = response.headers.get('content-type');
+        const text = await response.text();
+
+        // Check for successful response
+        expect(response.status).toEqual(200);
+
+        // Check the content type is for JavaScript
+        expect(contentType).toMatch(/javascript/);
+
+        // Optionally check for a specific string in the response
+        // This depends on what the JavaScript file contains
+        expect(text.startsWith('(function() {')).toBe(true);
+    });
+
+	test('GET /lib.js', async () => {
+        const response = await fetch('http://localhost:8080/lib.js', {
+            method: 'GET'
+        });
+        const contentType = response.headers.get('content-type');
+        const text = await response.text();
+
+        // Check for successful response
+        expect(response.status).toEqual(200);
+
+        // Check the content type is for JavaScript
+        expect(contentType).toMatch(/javascript/);
+
+        // Optionally check for a specific string in the response
+        // This depends on what the JavaScript file contains
+        expect(text.startsWith('(function () {')).toBe(true);
+    });
+
+
+	test('GET /decide', async () => {
+        const response = await fetch('http://localhost:8080/decide', {
+            method: 'GET'
+        });
+        const contentType = response.headers.get('content-type');
+        const body = await response.json();
+
+        // Check for successful response
+        expect(response.status).toEqual(299);
+		expect(body.error).toEqual('the /decide endpoint is deprecated');
+        expect(contentType).toEqual('application/json; charset=utf-8');
+    });
+
+	test('POST /decide', async () => {
+        const response = await fetch('http://localhost:8080/decide', {
+            method: 'POST'
+        });
+        const contentType = response.headers.get('content-type');
+        const body = await response.json();
+
+        // Check for successful response
+        expect(response.status).toEqual(299);
+		expect(body.error).toEqual('the /decide endpoint is deprecated');
+        expect(contentType).toEqual('application/json; charset=utf-8');
+    });
+})
+
+
+
+describe('PARSING', () => {
+	console.error = jest.fn();
+    test('{}', () => {
+        const input = JSON.stringify({ key: 'value' });
+        expect(parseSDKData(input)).toEqual([{ key: 'value' }]);
+    });
+
+    test('[{}, {}, {}]', () => {
+        const input = JSON.stringify([{ key: 'value' }, { key: 'value' }, { key: 'value' }]);
+        expect(parseSDKData(input)).toEqual([{ key: 'value' }, { key: 'value' }, { key: 'value' }]);
+    });
+
+    test('base64 encoded', () => {
+        const json = JSON.stringify({ key: 'value' });
+        const base64 = Buffer.from(json).toString('base64');
+        expect(parseSDKData(base64)).toEqual([{ key: 'value' }]);
+    });
+
+    test('sendBeacon', () => {
+        const json = JSON.stringify({ key: 'value' });
+        const encoded = encodeURIComponent(Buffer.from(json).toString('base64'));
+        const input = `data=${encoded}`;
+        expect(parseSDKData(input)).toEqual([{ key: 'value' }]);
+    });
+
+    test('unknown format', () => {
+        const input = 'definitely not jason';
+        expect(parseSDKData(input)).toEqual([]);
+    });
 });

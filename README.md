@@ -1,7 +1,9 @@
 # Mixpanel Proxy Express
-this is a simple express server that acts as a proxy for mixpanel. it is designed to be used in a serverless environment, such as google cloud run, and it can be used to hide the token from the client.
+this is a simple express server that acts as a proxy for mixpanel. it is designed to be used in a serverless environment, such as google cloud run, and effectively provides scaffolding for to modify each record before it gets sent to mixpanel.
 
-under the hood, it adds the token into each request (`/track` or `/engage`) to goes to Mixpanel.
+the proof of concept demonstrates how this can be used to hide the token from the client - but this could also be used as the basis of a proxy that enforces a schema on the data being sent to mixpanel, enriches data points in flight, or even sends mixpanel data to other places.
+
+under the hood, it provides hooks to handle requests made to the `/track` `/engage` and `/groups` endpoints.
 
 ## Deployment
 To use this server, you need to set the following environment variables:
@@ -28,7 +30,7 @@ check `deploy.sh` for an example of how to deploy this server to google cloud ru
 Once you have deployed the proxy, you should use the following client-side configuration for initializing mixpanel
 
 ```javascript
-const PROXY_URL = `http://localhost:8080`;
+const PROXY_URL = `http://localhost:8080`; // the url of your deployed proxy
 const MIXPANEL_CUSTOM_LIB_URL = `${PROXY_URL}/lib.min.js`;
 // mixpanel snippet
 (function (f, b) { ... })(document, window.mixpanel || []);

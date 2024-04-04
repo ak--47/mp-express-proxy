@@ -1,177 +1,98 @@
+// A row-level Mixpanel proxy server which recieves data from Mixpanel's JS Lib.
+// by ak@mixpanel.com
+
+// DEPENDENCIES
 const express = require('express');
-const { createProxyMiddleware } = require('http-proxy-middleware');
-const bodyParser = require('body-parser');
 const app = express();
+const bodyParser = require('body-parser');
 const fetch = require('fetch-retry')(global.fetch);
+const setupProxy = require('./proxyConfig');
+const setupCORS = require('./corsConfig');
+const { parseSDKData } = require('./parser');
+
+// ENV
 require('dotenv').config();
-// Use bodyParser to parse application/x-www-form-urlencoded
-app.use(bodyParser.urlencoded({ extended: true }));
-
-// Use bodyParser to parse text/plain content-type
-app.use(bodyParser.text({ type: 'text/plain' }));
-
-// Environment Variables
 const port = process.env.PORT || 8080;
 const FRONTEND_URL = process.env.FRONTEND_URL || "*";
 const MIXPANEL_TOKEN = process.env.MIXPANEL_TOKEN;
 const REGION = process.env.REGION || 'US';
 const RUNTIME = process.env.RUNTIME || 'prod';
 
-const BASE_URL = `https://api${REGION?.toUpperCase() === "EU" ? '-eu' : ''}.mixpanel.com`;
+// MIDDLEWARE
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.text({ type: 'text/plain' }));
+setupProxy(app, RUNTIME);
+setupCORS(app, FRONTEND_URL);
 
+// REGION
+const BASE_URL = `https://api${REGION?.toUpperCase() === "EU" ? '-eu' : ''}.mixpanel.com`;
 if (!MIXPANEL_TOKEN) {
 	console.error('MIXPANEL_TOKEN is not set; this is required to run the proxy server. Please set it as an environment variable.');
 	process.exit(1);
 }
 
+// ROUTES
+// https://developer.mixpanel.com/reference/track-event
+// https://developer.mixpanel.com/reference/engage
+// https://developer.mixpanel.com/reference/groups
+app.post('/track', async (req, res) => { await handleMixpanelData('track', req, res); });
+app.post('/engage', async (req, res) => { await handleMixpanelData('engage', req, res); });
+app.post('/groups', async (req, res) => { await handleMixpanelData('groups', req, res); });
+app.all('/decide', async (req, res) => { res.status(299).send({ error: "the /decide endpoint is deprecated" }); });
 
-// CORS Middleware
-app.use((req, res, next) => {
-	res.header('Access-Control-Allow-Origin', FRONTEND_URL);
-	res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-	res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-	res.header('Access-Control-Allow-Credentials', 'true');
-	next();
-});
-
-app.options('*', (req, res) => {
-	// Set CORS headers here
-	res.header('Access-Control-Allow-Origin', FRONTEND_URL);
-	res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-	res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-	res.header('Access-Control-Allow-Credentials', 'true');
-	res.sendStatus(200);
-});
-
-
-app.use('/lib.min.js', createProxyMiddleware({
-	target: 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js',
-	changeOrigin: true,
-	pathRewrite: { '^/lib.min.js': '' },
-	logLevel: RUNTIME === "prod" ? "error" : "debug"
-}));
-
-// Proxy for /lib.js
-app.use('/lib.js', createProxyMiddleware({
-	target: 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.js',
-	changeOrigin: true,
-	pathRewrite: { '^/lib.js': '' }
-}));
-
-// Proxy for /decide
-app.use('/decide', createProxyMiddleware({
-	target: 'https://decide.mixpanel.com/decide',
-	changeOrigin: true,
-	pathRewrite: { '^/decide': '' }
-}));
-
-
-// custom Handler for /track
-app.post('/track', async (req, res) => {
-	try {
-		if (!req.body) return res.status(400).send('No data provided');
-		const params = req.query;
-		const eventData = parseIncomingData(req.body?.data || req.body);
-		const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.connection.remoteAddress;
-		for (let event of eventData) {
-			if (!event.properties) event.properties = {};
-			event.properties.token = MIXPANEL_TOKEN;
-			if (params.ip === '1') event.properties.ip = ip;
-		}
-
-		const flushData = await makeRequest(`${BASE_URL}/track?verbose=1`, eventData);
-		res.send(flushData);
-
-	} catch (error) {
-		if (RUNTIME === 'dev') console.error(error);
-		res.status(500).send('An error occurred calling /track');
-	}
-});
-
-
-
-
-// custom Handler for /engage
-app.post('/engage', async (req, res) => {
-	try {
-		if (!req.body.data) return res.status(400).send('No data provided');
-		const params = req.query;
-		const profileData = parseIncomingData(req.body?.data || req.body);
-		const ip = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.connection.remoteAddress;
-		for (let update of profileData) {
-			update.$token = MIXPANEL_TOKEN;
-			if (params.ip === '1') update.$ip = ip;
-		}
-
-		const flushData = await makeRequest(`${BASE_URL}/engage?verbose=1`, profileData);
-		res.send(flushData);
-
-	} catch (error) {
-		if (RUNTIME === 'dev') console.error(error);
-		res.status(500).send('An error occurred calling /engage');
-	}
-});
-
-
-
+// START
 app.listen(port, () => {
 	if (RUNTIME === 'dev') console.log(`proxy alive on ${port}`);
 });
 
 
-function parseIncomingData(reqBody) {
+/**
+ * this function handles the incoming data from the Mixpanel JS lib via .track() .people.set() and .group.set()
+ * @param  {'track' | 'engage' | 'groups'} type
+ * @param  {import('express').Request} req
+ * @param  {import('express').Response} res
+ */
+async function handleMixpanelData(type, req, res) {
+	if (!type) return res.status(400).send('No type provided');
+	if (!req.body) return res.status(400).send('No data provided');
+
+	const data = parseSDKData(req.body?.data || req.body);
+	const endUserIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.connection.remoteAddress;
+
+	// mutate the data
+	data.forEach(record => {
+
+		// include token
+		if (type === 'track') record.properties.token = MIXPANEL_TOKEN;
+		if (type === 'engage') record.$token = MIXPANEL_TOKEN;
+		if (type === 'groups') record.$token = MIXPANEL_TOKEN;
+
+		// include the IP address for geo-location
+		if (req.query.ip === '1') {
+			if (type === 'track') record.properties.ip = endUserIp;
+			if (type === 'engage') record.$ip = endUserIp;
+			if (type === 'groups') record.$ip = endUserIp;
+		}
+	});
+
+	const endpointUrl = `${BASE_URL}/${type}?verbose=1`;
+	
 	try {
-		let data;
-		if (typeof reqBody === 'object' && reqBody?.data) reqBody = reqBody.data;
-
-		// handling JSON
-		if (typeof reqBody === 'string') {
-			if (reqBody.startsWith("[") || reqBody.startsWith("{")) {
-				try {
-					data = JSON.parse(reqBody);
-				}
-				catch (e) {
-					// probably not JSON
-					throw new Error('unable to parse incoming data');
-				}
-			}
-
-			// handling FORM
-			else {
-				try {
-					data = JSON.parse(Buffer.from(reqBody, 'base64').toString('utf-8'));
-				}
-				catch (e) {
-					// handling sendBeacon
-					try {
-						const body = reqBody.split("=").splice(-1).pop();
-						data = JSON.parse(Buffer.from(decodeURIComponent(body), 'base64').toString('utf-8'));
-					}
-					catch (e) {
-						// we don't know what this is
-						throw new Error('unable to parse incoming data');
-					}
-
-				}
-
-			}
-		}
-
-		if (Array.isArray(data)) return data;
-		else if (data) return [data];
-		else {
-			throw new Error('unable to parse incoming data');
-		}
+		const flushData = await makeRequest(endpointUrl, data);
+		res.send(flushData);
 	}
-	catch (e) {
-		console.error(e);
-		console.error('unable to parse incoming data');
-		console.error('reqBody:', reqBody);
-		return [];
+
+	catch (error) {
+		if (RUNTIME === 'dev') console.error(error);
+		res.status(500).send(`An error occurred calling /${type}`);
 	}
 }
 
-
+/**
+ * sends a POST request to the given URL with the given data
+ * @param  {string} url
+ * @param  {Object[]} data
+ */
 async function makeRequest(url, data) {
 	if (RUNTIME === 'dev') console.log(`\nrequest to ${shortUrl(url)} with data:\n${pp(data)} ${sep()}`);
 
@@ -194,7 +115,6 @@ async function makeRequest(url, data) {
 
 
 // helpers
-
 function pp(obj) {
 	return JSON.stringify(obj, null, 2);
 }
@@ -206,3 +126,9 @@ function sep() {
 function shortUrl(url) {
 	return new URL(url).pathname;
 }
+
+module.exports = {
+	parseSDKData,
+	makeRequest,
+	handleMixpanelData
+};
