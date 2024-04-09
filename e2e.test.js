@@ -1,4 +1,4 @@
-const { spawn } = require('child_process');
+/* cSpell:disable */
 const { parseSDKData } = require('./parser');
 
 describe('DATA', () => {
