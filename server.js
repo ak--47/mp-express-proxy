@@ -13,10 +13,16 @@ const { parseSDKData } = require('./parser');
 // ENV
 require('dotenv').config();
 const port = process.env.PORT || 8080;
-const FRONTEND_URL = process.env.FRONTEND_URL || "*";
-const MIXPANEL_TOKEN = process.env.MIXPANEL_TOKEN;
 const REGION = process.env.REGION || 'US';
 const RUNTIME = process.env.RUNTIME || 'unknown';
+
+let FRONTEND_URL = process.env.FRONTEND_URL || "";
+let MIXPANEL_TOKEN = process.env.MIXPANEL_TOKEN || "";
+if (FRONTEND_URL === "none") FRONTEND_URL = "";
+if (MIXPANEL_TOKEN === "none") MIXPANEL_TOKEN = "";
+
+
+
 
 // MIDDLEWARE
 app.use(bodyParser.urlencoded({ extended: true }));

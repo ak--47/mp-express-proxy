@@ -7,4 +7,5 @@ gcloud run deploy express-proxy \
   --platform managed \
   --project mixpanel-gtm-training \
   --allow-unauthenticated \
-  --set-env-vars MIXPANEL_TOKEN=YOUR_MIXPANEL_TOKEN,FRONTEND_URL=http://localhost:3000
+  --set-env-vars MIXPANEL_TOKEN=none,FRONTEND_URL=none
+
