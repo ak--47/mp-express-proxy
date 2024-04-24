@@ -27,8 +27,8 @@ if (MIXPANEL_TOKEN === "none") MIXPANEL_TOKEN = "";
 // MIDDLEWARE
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.text({ type: 'text/plain' }));
-setupProxy(app, RUNTIME);
 setupCORS(app, FRONTEND_URL);
+setupProxy(app, RUNTIME);
 
 // REGION
 const BASE_URL = `https://api${REGION?.toUpperCase() === "EU" ? '-eu' : ''}.mixpanel.com`;
