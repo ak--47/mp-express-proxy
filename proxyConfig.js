@@ -9,7 +9,7 @@ module.exports = function (app, RUNTIME) {
 		pathRewrite: { '^/lib.min.js': '' },
 		logLevel: RUNTIME === "prod" ? "error" : "debug"
 	}));
-	
+
 	app.use('/lib.js', createProxyMiddleware({
 		target: 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.js',
 		changeOrigin: true,
@@ -17,6 +17,14 @@ module.exports = function (app, RUNTIME) {
 		logLevel: RUNTIME === "prod" ? "error" : "debug"
 	}));
 
+	// session recording
+	app.use('/record', createProxyMiddleware({
+		target: 'https://api-js.mixpanel.com/record',
+		changeOrigin: true,
+		pathRewrite: { '^/record': '' },
+		logLevel: RUNTIME === "prod" ? "error" : "debug"
+	}));
 
-	
+
+
 };

@@ -1,5 +1,6 @@
 /* cSpell:disable */
 const { parseSDKData } = require('./parser');
+const timeout = 10000;
 
 describe('DATA', () => {
 	test('POST /track (json)', async () => {
@@ -15,19 +16,19 @@ describe('DATA', () => {
 	});
 
 	test('POST /track (form)', async () => {
-		const payload = {"event": "look no token!","properties": {"$os": "Mac OS X","$browser": "Chrome","$current_url": "http://localhost:3000/","$browser_version": 122,"$screen_height": 1080,"$screen_width": 1920,"mp_lib": "web","$lib_version": "2.49.0","$insert_id": "6vufqscyx36h4h5v","time": Date.now(),"distinct_id": "$device:18dfa610897264-06d57d796ce8f8-1d525637-1fa400-18dfa610897264","$device_id": "18dfa610897264-06d57d796ce8f8-1d525637-1fa400-18dfa610897264","$initial_referrer": "$direct","$initial_referring_domain": "$direct","token": ""}}
+		const payload = { "event": "look no token!", "properties": { "$os": "Mac OS X", "$browser": "Chrome", "$current_url": "http://localhost:3000/", "$browser_version": 122, "$screen_height": 1080, "$screen_width": 1920, "mp_lib": "web", "$lib_version": "2.49.0", "$insert_id": "6vufqscyx36h4h5v", "time": Date.now(), "distinct_id": "$device:18dfa610897264-06d57d796ce8f8-1d525637-1fa400-18dfa610897264", "$device_id": "18dfa610897264-06d57d796ce8f8-1d525637-1fa400-18dfa610897264", "$initial_referrer": "$direct", "$initial_referring_domain": "$direct", "token": "" } };
 		const response = await fetch('http://localhost:8080/track', {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/x-www-form-urlencoded',
-				
+
 			},
 			body: `data=${Buffer.from(JSON.stringify(payload)).toString('base64')}`,
 		});
 		const data = await response.json();
 		expect(data).toEqual({ error: null, status: 1 });
 	});
-	
+
 	//THIS DOESN'T WORK
 	test('POST /track (sendBeacon)', async () => {
 		const payload = {
@@ -55,7 +56,7 @@ describe('DATA', () => {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'text/plain;charset=UTF-8'
-				
+
 			},
 			body: `data=${encodedPayload}`,
 		});
@@ -76,100 +77,138 @@ describe('DATA', () => {
 	});
 });
 
-describe('PROXY', ()=>{
+describe('PROXY', () => {
 	test('GET /lib.min.js', async () => {
-        const response = await fetch('http://localhost:8080/lib.min.js', {
-            method: 'GET'
-        });
-        const contentType = response.headers.get('content-type');
-        const text = await response.text();
+		const response = await fetch('http://localhost:8080/lib.min.js', {
+			method: 'GET'
+		});
+		const contentType = response.headers.get('content-type');
+		const text = await response.text();
 
-        // Check for successful response
-        expect(response.status).toEqual(200);
+		// Check for successful response
+		expect(response.status).toEqual(200);
 
-        // Check the content type is for JavaScript
-        expect(contentType).toMatch(/javascript/);
+		// Check the content type is for JavaScript
+		expect(contentType).toMatch(/javascript/);
 
-        // Optionally check for a specific string in the response
-        // This depends on what the JavaScript file contains
-        expect(text.startsWith('(function() {')).toBe(true);
-    });
+		// Optionally check for a specific string in the response
+		// This depends on what the JavaScript file contains
+		expect(text.startsWith('(function() {')).toBe(true);
+	});
 
 	test('GET /lib.js', async () => {
-        const response = await fetch('http://localhost:8080/lib.js', {
-            method: 'GET'
-        });
-        const contentType = response.headers.get('content-type');
-        const text = await response.text();
+		const response = await fetch('http://localhost:8080/lib.js', {
+			method: 'GET'
+		});
+		const contentType = response.headers.get('content-type');
+		const text = await response.text();
 
-        // Check for successful response
-        expect(response.status).toEqual(200);
+		// Check for successful response
+		expect(response.status).toEqual(200);
 
-        // Check the content type is for JavaScript
-        expect(contentType).toMatch(/javascript/);
+		// Check the content type is for JavaScript
+		expect(contentType).toMatch(/javascript/);
 
-        // Optionally check for a specific string in the response
-        // This depends on what the JavaScript file contains
-        expect(text.startsWith('(function () {')).toBe(true);
-    });
+		// Optionally check for a specific string in the response
+		// This depends on what the JavaScript file contains
+		expect(text.startsWith('(function () {')).toBe(true);
+	});
 
 
 	test('GET /decide', async () => {
-        const response = await fetch('http://localhost:8080/decide', {
-            method: 'GET'
-        });
-        const contentType = response.headers.get('content-type');
-        const body = await response.json();
+		const response = await fetch('http://localhost:8080/decide', {
+			method: 'GET'
+		});
+		const contentType = response.headers.get('content-type');
+		const body = await response.json();
 
-        // Check for successful response
-        expect(response.status).toEqual(299);
+		// Check for successful response
+		expect(response.status).toEqual(299);
 		expect(body.error).toEqual('the /decide endpoint is deprecated');
-        expect(contentType).toEqual('application/json; charset=utf-8');
-    });
+		expect(contentType).toEqual('application/json; charset=utf-8');
+	});
 
 	test('POST /decide', async () => {
-        const response = await fetch('http://localhost:8080/decide', {
-            method: 'POST'
-        });
-        const contentType = response.headers.get('content-type');
-        const body = await response.json();
+		const response = await fetch('http://localhost:8080/decide', {
+			method: 'POST'
+		});
+		const contentType = response.headers.get('content-type');
+		const body = await response.json();
 
-        // Check for successful response
-        expect(response.status).toEqual(299);
+		// Check for successful response
+		expect(response.status).toEqual(299);
 		expect(body.error).toEqual('the /decide endpoint is deprecated');
-        expect(contentType).toEqual('application/json; charset=utf-8');
-    });
-})
+		expect(contentType).toEqual('application/json; charset=utf-8');
+	});
+
+
+	test('POST /record', async () => {
+		const data = {
+			"distinct_id": "muddy-flower-6296",
+			"events": [
+				{
+					"type": 4,
+					"data": {
+						"href": "https://www.pizzacampania.net/",
+						"width": 1335,
+						"height": 283
+					},
+					"timestamp": 1713928381988
+				}
+			],
+			"seq": 0,
+			"batch_start_time": 1713928381.988,
+			"replay_id": "18f0e17a6247a3-0b57ddfe684e33-1b525637-16a7f0-18f0e17a6247a3",
+			"replay_length_ms": 3882,
+			"replay_start_time": 1713928381.988,
+			"$device_id": "18f0e17a5c3743-033046f8671062-1b525637-16a7f0-18f0e17a5c3743",
+			"$user_id": "muddy-flower-6296"
+		};
+		const response = await fetch('http://localhost:8080/record', {
+			method: 'POST',
+			body: JSON.stringify(data),
+			headers: {
+				'Authorization': 'Basic N2MwMmFkMjJhZTU3NWFiNGUxNWNkZDA1MmNkNzMwZmI6',
+				'Content-Type': 'application/json'
+			}
+		});
+		const body = await response.json();
+		expect(body).toEqual({ "code": 200, "status": "OK" });
+	
+	}, timeout);
+
+
+});
 
 
 
 describe('PARSING', () => {
 	console.error = jest.fn();
-    test('{}', () => {
-        const input = JSON.stringify({ key: 'value' });
-        expect(parseSDKData(input)).toEqual([{ key: 'value' }]);
-    });
+	test('{}', () => {
+		const input = JSON.stringify({ key: 'value' });
+		expect(parseSDKData(input)).toEqual([{ key: 'value' }]);
+	});
 
-    test('[{}, {}, {}]', () => {
-        const input = JSON.stringify([{ key: 'value' }, { key: 'value' }, { key: 'value' }]);
-        expect(parseSDKData(input)).toEqual([{ key: 'value' }, { key: 'value' }, { key: 'value' }]);
-    });
+	test('[{}, {}, {}]', () => {
+		const input = JSON.stringify([{ key: 'value' }, { key: 'value' }, { key: 'value' }]);
+		expect(parseSDKData(input)).toEqual([{ key: 'value' }, { key: 'value' }, { key: 'value' }]);
+	});
 
-    test('base64 encoded', () => {
-        const json = JSON.stringify({ key: 'value' });
-        const base64 = Buffer.from(json).toString('base64');
-        expect(parseSDKData(base64)).toEqual([{ key: 'value' }]);
-    });
+	test('base64 encoded', () => {
+		const json = JSON.stringify({ key: 'value' });
+		const base64 = Buffer.from(json).toString('base64');
+		expect(parseSDKData(base64)).toEqual([{ key: 'value' }]);
+	});
 
-    test('sendBeacon', () => {
-        const json = JSON.stringify({ key: 'value' });
-        const encoded = encodeURIComponent(Buffer.from(json).toString('base64'));
-        const input = `data=${encoded}`;
-        expect(parseSDKData(input)).toEqual([{ key: 'value' }]);
-    });
+	test('sendBeacon', () => {
+		const json = JSON.stringify({ key: 'value' });
+		const encoded = encodeURIComponent(Buffer.from(json).toString('base64'));
+		const input = `data=${encoded}`;
+		expect(parseSDKData(input)).toEqual([{ key: 'value' }]);
+	});
 
-    test('unknown format', () => {
-        const input = 'definitely not jason';
-        expect(parseSDKData(input)).toEqual([]);
-    });
+	test('unknown format', () => {
+		const input = 'definitely not jason';
+		expect(parseSDKData(input)).toEqual([]);
+	});
 });
