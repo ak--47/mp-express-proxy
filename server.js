@@ -12,7 +12,7 @@ const { parseSDKData } = require('./parser');
 
 // ENV
 require('dotenv').config();
-const port = process.env.PORT || 8080;
+const PORT = process.env.PORT || 8080;
 const REGION = process.env.REGION || 'US';
 const RUNTIME = process.env.RUNTIME || 'unknown';
 
@@ -46,8 +46,8 @@ app.all('/', (req, res) => { res.status(200).json({ status: "OK" }); });
 app.all('/decide', (req, res) => { res.status(299).send({ error: "the /decide endpoint is deprecated" }); });
 
 // START
-app.listen(port, () => {
-	if (RUNTIME === 'dev') console.log(`proxy alive on ${port}`);
+app.listen(PORT, () => {
+	if (RUNTIME === 'dev') console.log(`proxy alive on ${PORT}`);
 });
 
 

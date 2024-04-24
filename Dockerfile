@@ -15,5 +15,9 @@ RUN npm install --only=production
 # Copy local code to the container image.
 COPY . ./
 
+# set RUNTIME = prod environment var
+ENV RUNTIME=prod
+ENV PORT=8080
+
 # Run the web service on container startup.
 CMD [ "node", "server.js" ]
