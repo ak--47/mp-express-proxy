@@ -20,4 +20,4 @@ ENV RUNTIME=prod
 ENV PORT=8080
 
 # Run the web service on container startup.
-CMD [ "node", "server.js" ]
+CMD [ "npm", "start" ]
