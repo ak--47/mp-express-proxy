@@ -6,9 +6,9 @@ const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
 const fetch = require('fetch-retry')(global.fetch);
-const setupProxy = require('./proxyConfig');
-const setupCORS = require('./corsConfig');
-const { parseSDKData } = require('./parser');
+const setupProxy = require('./components/proxyConfig');
+const setupCORS = require('./components/corsConfig');
+const { parseSDKData } = require('./components/parser');
 
 // ENV
 require('dotenv').config();
@@ -46,10 +46,11 @@ app.all('/', (req, res) => { res.status(200).json({ status: "OK" }); });
 app.all('/decide', (req, res) => { res.status(299).send({ error: "the /decide endpoint is deprecated" }); });
 
 // START
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
 	if (RUNTIME === 'dev') console.log(`proxy alive on ${PORT}`);
 });
 
+ 
 
 /**
  * this function handles the incoming data from the Mixpanel JS lib via .track() .people.set() and .group.set()
