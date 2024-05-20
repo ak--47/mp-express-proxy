@@ -41,11 +41,15 @@ function parseSDKData(reqBody) {
 			}
 		}
 
-		if (Array.isArray(data)) return data;
-		else if (data) return [data];
-		else {
-			throw new Error('unable to parse incoming data (unknown format)');
+		if (typeof reqBody === 'object') {
+			data = reqBody;
+			if (Array.isArray(data)) return data;
+			else if (data) return [data];
 		}
+		
+		//should never get here
+		throw new Error('unable to parse incoming data (unknown format)');
+
 	}
 	catch (e) {
 		console.error(e);

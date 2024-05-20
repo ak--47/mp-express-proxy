@@ -177,3 +177,48 @@ describe('PROXY', () => {
 	}, timeout);
 });
 
+describe('BROWSER', () => {
+	const puppeteer = require("puppeteer");
+	const DEV_URL = "http://localhost:3000";
+
+	let browser, EXTENSION_ID;
+
+	const timeout = 100000;
+
+	beforeAll(async () => {
+		browser = await puppeteer.launch({
+			headless: true, 
+			args: [],
+		});
+
+		// New page to get extension ID
+		const page = await browser.newPage();
+		await page.goto(DEV_URL);
+		await page.waitForSelector("body");
+
+		await page.close();
+	});
+
+	afterAll(async () => {
+		await browser.close();
+	});
+
+
+	describe("general", () => {
+
+		test("page renders", async () => {
+			const page = await browser.newPage();
+			await page.goto(DEV_URL);
+			const title = await page.title();
+			const expectedTitle = "mixpanel token hiding proxy";
+			const expectedHero = "let's test our proxy in real-life!";
+			const hero = await page.evaluate(() => {
+				const h1 = document.querySelector("h1");
+				return h1 ? h1.textContent : null;
+			});
+			expect(title).toBe(expectedTitle);
+			expect(hero).toBe(expectedHero);
+		}, timeout);
+
+	});
+});

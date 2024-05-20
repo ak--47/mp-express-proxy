@@ -2,7 +2,7 @@ const { createProxyMiddleware } = require('http-proxy-middleware');
 
 module.exports = function (app, RUNTIME) {
 
-	// Proxies for JS lib
+	// CDN
 	app.use('/lib.min.js', createProxyMiddleware({
 		target: 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js',
 		changeOrigin: true,

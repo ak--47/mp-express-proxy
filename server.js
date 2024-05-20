@@ -9,22 +9,21 @@ const fetch = require('fetch-retry')(global.fetch);
 const setupProxy = require('./components/proxyConfig');
 const setupCORS = require('./components/corsConfig');
 const { parseSDKData } = require('./components/parser');
+const { version } = require('./package.json');
 
 // ENV
 require('dotenv').config();
 const PORT = process.env.PORT || 8080;
 const REGION = process.env.REGION || 'US';
-const RUNTIME = process.env.RUNTIME || 'unknown';
-
+let RUNTIME = process.env.RUNTIME || 'unknown';
+if (process.env.NODE_ENV) RUNTIME = process.env.NODE_ENV; // more common
 let FRONTEND_URL = process.env.FRONTEND_URL || "";
 let MIXPANEL_TOKEN = process.env.MIXPANEL_TOKEN || "";
 if (FRONTEND_URL === "none") FRONTEND_URL = "";
 if (MIXPANEL_TOKEN === "none") MIXPANEL_TOKEN = "";
 
-
-
-
 // MIDDLEWARE
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.text({ type: 'text/plain' }));
 setupCORS(app, FRONTEND_URL);
@@ -39,18 +38,26 @@ if (!MIXPANEL_TOKEN && RUNTIME !== "prod") console.error('MIXPANEL_TOKEN is not 
 // https://developer.mixpanel.com/reference/track-event
 // https://developer.mixpanel.com/reference/engage
 // https://developer.mixpanel.com/reference/groups
-app.post('/track', async (req, res) => { await handleMixpanelData('track', req, res); });
-app.post('/engage', async (req, res) => { await handleMixpanelData('engage', req, res); });
-app.post('/groups', async (req, res) => { await handleMixpanelData('groups', req, res); });
-app.all('/', (req, res) => { res.status(200).json({ status: "OK" }); });
-app.all('/decide', (req, res) => { res.status(299).send({ error: "the /decide endpoint is deprecated" }); });
+app.post('/track', async (req, res) => await handleMixpanelData('track', req, res));
+app.post('/engage', async (req, res) => await handleMixpanelData('engage', req, res));
+app.post('/groups', async (req, res) => await handleMixpanelData('groups', req, res));
+app.all('/', (req, res) => res.status(200).json({ status: "OK" }));
+app.all('/ping', (req, res) => res.status(200).json({ status: "OK", message: "pong", version }));
+app.all('/decide', (req, res) => res.status(299).send({ error: "the /decide endpoint is deprecated" }));
+
+// RANDOM ERRORS
+app.use((err, req, res, next) => {
+	console.error(err.stack);
+	res.status(500).send(`Something went wrong!\n\n${err?.message || err}`);
+});
+
 
 // START
 const server = app.listen(PORT, () => {
 	if (RUNTIME === 'dev') console.log(`proxy alive on ${PORT}`);
 });
 
- 
+
 
 /**
  * this function handles the incoming data from the Mixpanel JS lib via .track() .people.set() and .group.set()
@@ -63,7 +70,7 @@ async function handleMixpanelData(type, req, res) {
 	if (!req.body) return res.status(400).send('No data provided');
 
 	const data = parseSDKData(req.body?.data || req.body);
-	const endUserIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress || req.connection.remoteAddress;
+	const endUserIp = req.headers['x-forwarded-for'] || req?.socket?.remoteAddress || req?.connection?.remoteAddress;
 
 	// mutate the data
 	data.forEach(record => {

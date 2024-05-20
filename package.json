@@ -8,7 +8,8 @@
     "dev": "RUNTIME=dev nodemon --inspect server.js",
     "deploy:cloudrun": "./scripts/deploy-cloudrun.sh",
     "frontend": "npx serve ./demo/",
-    "test": "jest"
+    "test": "jest",
+    "stress": "npx artillery run --dotenv ./performance/.env --output ./performance/report.json ./performance/proxy-load-test.yml"
   },
   "keywords": [
     "mixpanel",
@@ -35,8 +36,10 @@
     "globalTeardown": "./tests/teardown.js"
   },
   "devDependencies": {
+    "artillery": "^2.0.12",
     "jest": "^29.7.0",
     "nodemon": "^3.1.0",
+    "puppeteer": "^22.9.0",
     "tree-kill": "^1.2.2"
   }
 }
