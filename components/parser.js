@@ -25,7 +25,6 @@ function parseSDKData(reqBody) {
 					data = JSON.parse(Buffer.from(reqBody, 'base64').toString('utf-8'));
 				}
 				catch (e) {
-
 					// handling sendBeacon
 					try {
 						const body = reqBody.split("=").splice(-1).pop();
@@ -41,12 +40,9 @@ function parseSDKData(reqBody) {
 			}
 		}
 
-		if (typeof reqBody === 'object') {
-			data = reqBody;
-			if (Array.isArray(data)) return data;
-			else if (data) return [data];
-		}
-		
+		if (typeof reqBody === 'object') data = reqBody;
+		if (Array.isArray(data)) return data;
+		else if (data) return [data];
 		//should never get here
 		throw new Error('unable to parse incoming data (unknown format)');
 

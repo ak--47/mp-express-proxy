@@ -42,14 +42,18 @@
 			// persistence: 'localStorage',
 			// disable_persistence: false,
 			// ip: false,
-			// ignore_dnt: true,
-			// debug: true,
+			
+			debug: true,
+			ignore_dnt: true,
 			batch_requests: true,
-			batch_flush_interval_ms: 5000
+			batch_flush_interval_ms: 0,
+			loaded: function (mixpanel) {
+				console.log('mixpanel has loaded');
+			},
 		});
 
 
-		//example tracking code
+		//example tracking code		
 		document.querySelector('#clickMe').addEventListener('click', () => {
 			mixpanel.track('click me button');
 		});

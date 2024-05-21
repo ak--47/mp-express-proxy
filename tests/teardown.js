@@ -8,5 +8,11 @@ module.exports = async () => {
 	await killAsync(pid)
 		.then(() => console.log('Test server stopped.\n\n'))
 		.catch(error => console.error('Error stopping test server:', error));
+
+	const frontendPid = global.__FRONTEND__.pid;
+	await killAsync(frontendPid)
+		.then(() => console.log('Frontend stopped.\n\n'))
+		.catch(error => console.error('Error stopping frontend:', error));
+		
 	console.log('teardown complete.\n');
 };

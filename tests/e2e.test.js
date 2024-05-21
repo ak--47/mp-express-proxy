@@ -1,4 +1,5 @@
 /* cSpell:disable */
+
 const timeout = 10000;
 
 describe('DATA', () => {
@@ -187,7 +188,7 @@ describe('BROWSER', () => {
 
 	beforeAll(async () => {
 		browser = await puppeteer.launch({
-			headless: true, 
+			headless: true,
 			args: [],
 		});
 
@@ -204,21 +205,85 @@ describe('BROWSER', () => {
 	});
 
 
-	describe("general", () => {
 
-		test("page renders", async () => {
-			const page = await browser.newPage();
-			await page.goto(DEV_URL);
-			const title = await page.title();
-			const expectedTitle = "mixpanel token hiding proxy";
-			const expectedHero = "let's test our proxy in real-life!";
-			const hero = await page.evaluate(() => {
-				const h1 = document.querySelector("h1");
-				return h1 ? h1.textContent : null;
-			});
-			expect(title).toBe(expectedTitle);
-			expect(hero).toBe(expectedHero);
-		}, timeout);
+	test("page renders", async () => {
+		const page = await browser.newPage();
+		await page.goto(DEV_URL);
+		const title = await page.title();
+		const expectedTitle = "mixpanel token hiding proxy";
+		const expectedHero = "let's test our proxy in real-life!";
+		const hero = await page.evaluate(() => {
+			const h1 = document.querySelector("h1");
+			return h1 ? h1.textContent : null;
+		});
+		expect(title).toBe(expectedTitle);
+		expect(hero).toBe(expectedHero);
+	}, timeout);
 
-	});
+
+	test("mixpanel loads", async () => {
+		const expectedText = `mixpanel has loaded`
+		const page = await browser.newPage();
+		page.on("console", (msg) => {
+			console.log("PAGE LOG:", msg.text());
+			expect(msg.text()).toBe(expectedText);
+		});
+		await page.goto(DEV_URL);
+		await page.waitForSelector("body");	
+	}, timeout);
+
+	test("button click", async () => {
+		const passMessages = ["mixpanel has loaded","MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):", "JSHandle@object"]
+		let hits = 0;
+		const page = await browser.newPage();
+		page.on("console", (msg) => {
+			expect(passMessages).toContain(msg.text());	
+			if (passMessages.includes(msg.text())) hits++;
+		});
+		await page.goto(DEV_URL);
+		await page.waitForSelector("#clickMe");
+		await page.click("#clickMe");
+		await sleep(100);
+		await page.click("#dontClickMe");
+		expect(hits).toBe(4);		
+	}, timeout);
+
+	test("button click", async () => {
+		const passMessages = ["mixpanel has loaded","MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):", "JSHandle@object"]
+		let hits = 0;
+		const page = await browser.newPage();
+		page.on("console", (msg) => {
+			expect(passMessages).toContain(msg.text());	
+			if (passMessages.includes(msg.text())) hits++;
+		});
+		await page.goto(DEV_URL);
+		await page.waitForSelector("#clickMe");
+		await page.click("#clickMe");
+		await sleep(100);
+		await page.click("#dontClickMe");
+		expect(hits).toBe(4);		
+	}, timeout);
+
+
+	test("identify + engage", async () => {
+		const passMessages = ["mixpanel has loaded","MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):", "JSHandle@object", "[batch] MIXPANEL REQUEST: JSHandle@array"]
+		let hits = 0;
+		const page = await browser.newPage();
+		page.on("console", (msg) => {
+			expect(passMessages).toContain(msg.text());	
+			if (passMessages.includes(msg.text())) hits++;
+		});
+		await page.goto(DEV_URL);
+		await page.waitForSelector("#profileSet");
+		await page.click("#profileSet");
+		await sleep(100);
+		await page.click("#identify");
+		expect(hits).toBe(7);		
+	}, timeout);
+
 });
+
+
+function sleep(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}

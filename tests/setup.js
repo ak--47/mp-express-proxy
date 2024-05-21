@@ -4,6 +4,7 @@ const { spawn } = require('child_process');
 module.exports = async () => {
 	console.log('Starting test server...\n\n');
 	global.__SERVER__ = spawn('npm', ['run', 'dev']);
+	global.__FRONTEND__ = spawn('npm', ['run', 'frontend']);
 
 	// Create a promise that resolves if the server starts successfully.
 	const serverStarted = new Promise(resolve => {
