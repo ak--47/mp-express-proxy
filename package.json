@@ -9,10 +9,10 @@
 		"frontend": "npx serve ./demo/",
 		"test": "jest",
 		"stress": "npx artillery run --dotenv ./performance/.env --output ./performance/report.json ./performance/proxy-load-test.yml",
-		"deploy:cloudrun": "./scripts/deploy-cloudrun.sh",
-		"deploy:cloudfunc": "./scripts/deploy-cloudfunc.sh",
-		"deploy:aws": "./scripts/deploy-aws.sh",
-		"deploy:azure": "./scripts/deploy-azure.sh"
+		"deploy:cloudrun": "./scripts/gcp-run-deploy.sh",
+		"deploy:cloudfunc": "./scripts/gcp-func-deploy.sh",
+		"deploy:aws": "./scripts/aws-deploy.sh",
+		"deploy:azure": "./scripts/aure-deploy.sh"
 	},
 	"keywords": [
 		"mixpanel",

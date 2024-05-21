@@ -1,7 +1,7 @@
 .vscode
 demo
 performance
-script
+scripts
 tests
 .env
 .funcignore
