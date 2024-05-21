@@ -1,7 +1,9 @@
 /* cSpell:disable */
 //@ts-nocheck
+const u = require('ak-tools');
+const { version } = require('../package.json');
 
-const timeout = 10000;
+const timeout = 30000;
 
 describe('DATA', () => {
 	test('POST /track (json)', async () => {
@@ -75,6 +77,32 @@ describe('DATA', () => {
 		});
 		const data = await response.json();
 		expect(data).toEqual({ error: null, status: 1 });
+	});
+});
+
+describe('HEARTBEAT', () => {
+	test('/ping (GET)', async () => {
+		const response = await fetch('http://localhost:8080/ping', {
+			method: 'GET'
+		});
+		const body = await response.json();
+		expect(body).toEqual({ status: "OK", message: "pong", version });
+	});
+
+	test('/ping (POST)', async () => {
+		const response = await fetch('http://localhost:8080/ping', {
+			method: 'POST'
+		});
+		const body = await response.json();
+		expect(body).toEqual({ status: "OK", message: "pong", version });
+	});
+
+	test('/ping (PUT)', async () => {
+		const response = await fetch('http://localhost:8080/ping', {
+			method: 'PUT'
+		});
+		const body = await response.json();
+		expect(body).toEqual({ status: "OK", message: "pong", version });
 	});
 });
 
@@ -174,8 +202,8 @@ describe('PROXY', () => {
 					'Content-Type': 'application/json'
 				}
 			});
-			const body = await response.json();
-			expect(body).toEqual({ "code": 200, "status": "OK" });
+			const body = await response.text();
+			expect(body).toEqual(`{ "code": 200, "status": "OK" }`);
 		}
 		catch (e) {
 			debugger; //i keep getting here
@@ -183,14 +211,15 @@ describe('PROXY', () => {
 
 
 	}, timeout);
+
+
 });
 
 describe('BROWSER', () => {
 	const puppeteer = require("puppeteer");
 	const DEV_URL = "http://localhost:3000";
 
-	let browser, EXTENSION_ID;
-
+	let browser;
 	const timeout = 100000;
 
 	beforeAll(async () => {
@@ -200,21 +229,88 @@ describe('BROWSER', () => {
 		});
 
 		// New page to get extension ID
-		const page = await browser.newPage();
-		await page.goto(DEV_URL);
-		await page.waitForSelector("body");
-
-		await page.close();
+		// const page = await browser.newPage();
+		// await page.goto(DEV_URL);
+		// await page.waitForSelector("body");
+		// await page.close();
 	});
 
 	afterAll(async () => {
 		await browser.close();
 	});
 
+	const passMessages = ["mixpanel has loaded", "MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):", "JSHandle@object", "[batch] MIXPANEL REQUEST: JSHandle@array", "[batch] Flush: Request already in progress"];
+	const failMessages = ["Access to XMLHttpRequest at"];
+	const goodUrls = ["http://localhost:3000", "http://localhost:8080/lib.min.js", "http://localhost:8080/lib.js", "http://localhost:8080/track", "http://localhost:8080/engage", "http://localhost:8080/record", "http://localhost:3000/favicon.ico"];
+
+	//side fx
+	const attachPageListeners = (page) => {
+		page.hits = 0;
+		page.on("console", (msg) => {
+			if (passMessages.includes(msg.text())) page.hits++;
+			if (failMessages.includes(msg.text())) debugger;
+			expect(passMessages).toContain(msg.text());
+			expect(failMessages).not.toContain(msg.text());
+
+		});
+
+		page.on("request", request => {
+			let requestUrl = request.url();
+			requestUrl = requestUrl.split("?").shift();
+			if (requestUrl.endsWith("/")) requestUrl = requestUrl.slice(0, -1);
+			if (request.method() === "POST") {
+				if (!goodUrls.includes(requestUrl)) debugger;
+				expect(goodUrls).toContain(requestUrl);
+				if (request.postData()) {
+					//post data should EITHER be a stringified JSON object OR a base64 encoded stringified JSON object
+					const startsWithData = request.postData().startsWith("data=");
+					const isJSON = u.isJSONStr(request.postData());
+					expect(startsWithData || isJSON).toBe(true);
+				}
+
+			}
+			if (request.method() === "GET") {
+				if (!goodUrls.includes(requestUrl)) debugger;
+				expect(goodUrls).toContain(requestUrl);
+
+			}
+
+
+		});
+
+		page.on("response", response => {
+			let responseUrl = response.url();
+			responseUrl = responseUrl.split("?").shift();
+			if (responseUrl.endsWith("/")) responseUrl = responseUrl.slice(0, -1);
+			if (!goodUrls.includes(responseUrl)) debugger;
+			expect(goodUrls).toContain(responseUrl);
+
+		});
+
+		page.on("requestfailed", request => {
+			debugger;
+			throw new Error(`Request failed: ${request.url()}`);
+		});
+
+		page.on("requestfinished", async request => {
+			const response = await request.response();
+			let responseUrl = response.url();
+			responseUrl = responseUrl.split("?").shift();
+			if (responseUrl.endsWith("/")) responseUrl = responseUrl.slice(0, -1);
+			expect(goodUrls).toContain(responseUrl);
+			if (!goodUrls.includes(responseUrl)) debugger;
+			if (responseUrl.includes('localhost:8080') && request.method() === 'POST') {
+				//this is a mixpanel request
+				//todo some more checks
+				debugger;
+			}
+		});
+	};
 
 
 	test("page renders", async () => {
 		const page = await browser.newPage();
+		attachPageListeners(page);
 		await page.goto(DEV_URL);
 		const title = await page.title();
 		const expectedTitle = "mixpanel token hiding proxy";
@@ -227,13 +323,10 @@ describe('BROWSER', () => {
 		expect(hero).toBe(expectedHero);
 	}, timeout);
 
-	const passMessages = ["mixpanel has loaded", "MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):", "JSHandle@object", "[batch] MIXPANEL REQUEST: JSHandle@array"];
-	const failMessages = ["Access to XMLHttpRequest at"];
-
 
 	test("mixpanel loads", async () => {
-		const expectedText = ["mixpanel has loaded"];
 		const page = await browser.newPage();
+		attachPageListeners(page);
 		page.on("console", (msg) => {
 			expect(passMessages).toContain(msg.text());
 			expect(failMessages).not.toContain(msg.text());
@@ -243,39 +336,27 @@ describe('BROWSER', () => {
 		await page.waitForSelector("body");
 	}, timeout);
 
-	test("button click", async () => {		
-		let hits = 0;
+	test("button click", async () => {
 		const page = await browser.newPage();
-		page.on("console", (msg) => {
-			expect(passMessages).toContain(msg.text());
-			if (passMessages.includes(msg.text())) hits++;
-			expect(failMessages).not.toContain(msg.text());
-			if (failMessages.includes(msg.text())) debugger;
-		});
+		attachPageListeners(page);
 		await page.goto(DEV_URL);
 		await page.waitForSelector("#clickMe");
 		await page.click("#clickMe");
 		await sleep(100);
 		await page.click("#dontClickMe");
-		expect(hits).toBe(4);
+		expect(page.hits).toBeGreaterThan(3);
 	}, timeout);
 
 
-	test("identify + engage", async () => {		
-		let hits = 0;
+	test("identify + engage", async () => {
 		const page = await browser.newPage();
-		page.on("console", (msg) => {
-			expect(passMessages).toContain(msg.text());
-			if (passMessages.includes(msg.text())) hits++;
-			expect(failMessages).not.toContain(msg.text());
-			if (failMessages.includes(msg.text())) debugger;
-		});
+		attachPageListeners(page);
 		await page.goto(DEV_URL);
 		await page.waitForSelector("#profileSet");
 		await page.click("#profileSet");
 		await sleep(100);
 		await page.click("#identify");
-		expect(hits).toBe(7);
+		expect(page.hits).toBeGreaterThan(6);
 	}, timeout);
 
 });

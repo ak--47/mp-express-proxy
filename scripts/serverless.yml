@@ -1,0 +1,37 @@
+service: mixpanel-proxy
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  environment:
+    MIXPANEL_TOKEN: ${env:MIXPANEL_TOKEN}
+    FRONTEND_URL: ${env:FRONTEND_URL}
+    RUNTIME: ${env:RUNTIME}
+    REGION: ${env:REGION}
+    PLATFORM: ${env:PLATFORM}
+
+functions:
+  app:
+    handler: server.handler
+    events:
+      - http:
+          path: /
+          method: any
+      - http:
+          path: /{proxy+}
+          method: any
+
+package:
+  exclude:
+    - "**/*"
+  include:
+    - "components/**"
+    - "server.js"
+    - "package.json"
+    - "package-lock.json"
+
+plugins:
+  - serverless-dotenv-plugin
+
+plugins:
+  - serverless-dotenv-plugin

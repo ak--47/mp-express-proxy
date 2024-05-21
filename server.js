@@ -6,6 +6,7 @@ const express = require('express');
 const app = express();
 const { createProxyMiddleware } = require('http-proxy-middleware');
 const bodyParser = require('body-parser');
+// @ts-ignore
 const fetch = require('fetch-retry')(global.fetch);
 const setupCORS = require('./components/corsConfig');
 const { parseSDKData } = require('./components/parser');
@@ -21,31 +22,14 @@ let FRONTEND_URL = process.env.FRONTEND_URL || "";
 let MIXPANEL_TOKEN = process.env.MIXPANEL_TOKEN || "";
 if (FRONTEND_URL === "none") FRONTEND_URL = "";
 if (MIXPANEL_TOKEN === "none") MIXPANEL_TOKEN = "";
+/** @type {'AWS'|'LAMBDA'|'GCP'| 'CLOUD_FUNCTIONS' | 'CLOUD_RUN' | 'AZURE_FUNCTIONS' | 'FUNCTIONS' | 'AZURE' | 'LOCAL' | string} platform */
+let PLATFORM = process.env.PLATFORM?.toUpperCase() || 'LOCAL';
 
-// MIDDLEWARE
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.text({ type: 'text/plain' }));
+// MIDDLEWARE + REGIONS
 setupCORS(app, FRONTEND_URL);
-
-// REGION
 const BASE_URL = `https://api${REGION?.toUpperCase() === "EU" ? '-eu' : ''}.mixpanel.com`;
 if (!MIXPANEL_TOKEN && RUNTIME !== "prod") console.error('MIXPANEL_TOKEN is not set; this is required to run the proxy server. Please set it as an environment variable.');
-const SESSION_RECORDING_URL = `https://api-js.mixpanel.com/record`;
 
-
-// ROUTES
-// https://developer.mixpanel.com/reference/track-event
-// https://developer.mixpanel.com/reference/engage
-// https://developer.mixpanel.com/reference/groups
-app.post('/track', async (req, res) => await handleMixpanelData('track', req, res));
-app.post('/engage', async (req, res) => await handleMixpanelData('engage', req, res));
-app.post('/groups', async (req, res) => await handleMixpanelData('groups', req, res));
-app.all('/', (req, res) => res.status(200).json({ status: "OK" }));
-app.all('/ping', (req, res) => res.status(200).json({ status: "OK", message: "pong", version }));
-app.all('/decide', (req, res) => res.status(299).send({ error: "the /decide endpoint is deprecated" }));
-
-// PROXIES
 app.use('/lib.min.js', createProxyMiddleware({
 	target: 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js',
 	changeOrigin: true,
@@ -60,41 +44,60 @@ app.use('/lib.js', createProxyMiddleware({
 	logLevel: RUNTIME === "prod" ? "error" : "debug"
 }));
 
-// session recording
 app.use('/record', createProxyMiddleware({
-	target: SESSION_RECORDING_URL,
+	target: BASE_URL,
 	changeOrigin: true,
-	pathRewrite: { '^/record': '' },
+	pathRewrite: { '^/record': '/record' },
 	logLevel: RUNTIME === "prod" ? "error" : "debug",
-	timeout: 60000, 
-	proxyTimeout: 60000
-	// onProxyReq: (proxyReq, req, res) => {
-	// 	// Log request details for debugging
-	// 	console.log(`proxy request to: ${proxyReq.getHeader('host')}${proxyReq.path}`);
-	// },
-	// onProxyRes: (proxyRes, req, res) => {
-	// 	// Log response details for debugging
-	// 	console.log(`proxy response from: ${proxyRes.req.getHeader('host')}${proxyRes.req.path}`);
-		
-	// },
-	// onError: (err, req, res) => {
-	// 	// Log the error details
-	// 	console.error(`Proxy error: ${err.message}`);
-	// 	res.status(500).send('Proxy error occurred.');
-	// }
 }));
 
-// RANDOM ERRORS
+// PARSERS
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.text({ type: 'text/plain' }));
+
+// CATCHING ERRORS
 app.use((err, req, res, next) => {
 	console.error(err.stack);
 	res.status(500).send(`Something went wrong!\n\n${err?.message || err}`);
 });
 
 
+// ROUTES
+app.post('/track', async (req, res) => await handleMixpanelData('track', req, res)); //? https://developer.mixpanel.com/reference/track-event
+app.post('/engage', async (req, res) => await handleMixpanelData('engage', req, res)); //? https://developer.mixpanel.com/reference/engage
+app.post('/groups', async (req, res) => await handleMixpanelData('groups', req, res)); //? https://developer.mixpanel.com/reference/groups
+app.all('/', (req, res) => res.status(200).json({ status: "OK" }));
+app.all('/ping', (req, res) => res.status(200).json({ status: "OK", message: "pong", version }));
+app.all('/decide', (req, res) => res.status(299).send({ error: "the /decide endpoint is deprecated" }));
+
 // START
-const server = app.listen(PORT, () => {
-	if (RUNTIME === 'dev') console.log(`proxy alive on ${PORT}`);
-});
+if (PLATFORM === 'LAMBDA') PLATFORM = 'AWS';
+if (PLATFORM === 'FUNCTIONS') PLATFORM = 'AZURE';
+if (PLATFORM === 'CLOUD_FUNCTIONS') PLATFORM = 'GCP';
+if (PLATFORM === 'CLOUD_RUN') PLATFORM = 'LOCAL';
+
+switch (PLATFORM) {
+	case 'GCP':
+		const { http } = require('@google-cloud/functions-framework');
+		http('mixpanel_proxy', app);  // Register the Express app as an HTTP function
+		module.exports = app;
+		break;
+	case 'AWS':
+		const serverless = require('serverless-http');
+		module.exports.handler = serverless(app);
+		break;
+	case 'AZURE':
+		const createHandler = require('azure-function-express').createHandler;
+		module.exports = createHandler(app);
+		break;
+	default:
+		app.listen(PORT, () => {
+			if (RUNTIME === 'dev') console.log(`proxy alive on ${PORT}`);
+		});
+		break;
+
+}
 
 
 
@@ -179,9 +182,7 @@ function shortUrl(url) {
 	return new URL(url).pathname;
 }
 
-module.exports = {
-	parseSDKData,
-	makeRequest,
-	handleMixpanelData,
-	server
-};
+
+module.exports.parseSDKData = parseSDKData;
+module.exports.makeRequest = makeRequest;
+module.exports.handleMixpanelData = handleMixpanelData;

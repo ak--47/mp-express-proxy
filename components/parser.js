@@ -4,6 +4,9 @@
  * @returns {Object[]}
  */
 function parseSDKData(reqBody) {
+	if (reqBody === undefined) return [];
+	if (reqBody === null) return [];
+
 	try {
 		let data;
 
@@ -30,6 +33,7 @@ function parseSDKData(reqBody) {
 					// handling sendBeacon
 					try {
 						const body = reqBody.split("=").splice(-1).pop();
+						if (!body) throw new Error('unable to parse incoming data (tried sendBeacon)');
 						data = JSON.parse(Buffer.from(decodeURIComponent(body), 'base64').toString('utf-8'));
 					}
 					catch (e) {
