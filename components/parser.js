@@ -1,21 +1,23 @@
 /**
  * parses the incoming data from the SDK
- * @param  {unknown} reqBody
+ * @param  {string | Object | Object[]} reqBody
  * @returns {Object[]}
  */
 function parseSDKData(reqBody) {
 	try {
 		let data;
 
-		// handling JSON
 		if (typeof reqBody === 'string') {
 			if (reqBody.startsWith("[") || reqBody.startsWith("{")) {
-				try {
-					data = JSON.parse(reqBody);
-				}
-				catch (e) {
-					// probably not JSON
-					throw new Error('unable to parse incoming data (tried JSON)');
+				if (reqBody.endsWith("]") || reqBody.endsWith("}")) {
+					// handling JSON
+					try {
+						data = JSON.parse(reqBody);
+					}
+					catch (e) {
+						// strangely not JSON
+						throw new Error('unable to parse incoming data (tried JSON)');
+					}
 				}
 			}
 
@@ -40,11 +42,16 @@ function parseSDKData(reqBody) {
 			}
 		}
 
-		if (typeof reqBody === 'object') data = reqBody;
-		if (Array.isArray(data)) return data;
-		else if (data) return [data];
+		if (typeof reqBody === 'object') {
+			if (Array.isArray(reqBody)) data = reqBody;
+			if (!Array.isArray(reqBody)) data = [reqBody];
+		}
+
+		if (data && Array.isArray(data)) return data;
+		if (data && !Array.isArray(data)) return [data];
+
 		//should never get here
-		throw new Error('unable to parse incoming data (unknown format)');
+		throw new Error('unable to parse incoming data (unknown format)', reqBody);
 
 	}
 	catch (e) {

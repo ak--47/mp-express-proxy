@@ -1,38 +1,54 @@
 const { spawn } = require('child_process');
+const timeout = 100000;
 
 // This function is called once before running the tests to start the test server.
 module.exports = async () => {
-	console.log('Starting test server...\n\n');
+	console.log('starting test server + frontend...\n\n');
 	global.__SERVER__ = spawn('npm', ['run', 'dev']);
 	global.__FRONTEND__ = spawn('npm', ['run', 'frontend']);
 
-	// Create a promise that resolves if the server starts successfully.
-	const serverStarted = new Promise(resolve => {
-		global.__SERVER__.stdout.on('data', data => {
-			if (data.toString().includes('proxy alive on 8080')) {
-				console.log(data.toString());
-				resolve('started');
-			}
+	const mainServerStarted = new Promise(resolve => {
+		global.__SERVER__.stdout.once('data', data => {
+			console.log('Server started');
+			resolve('started');
+
 		});
-
-		// global.__SERVER__.stderr.on('data', data => {
-		// 	console.error(`Error: ${data.toString()}`);
-		// });
 	});
 
-	// Create a timeout promise that resolves after a certain period.
-	const timeout = new Promise(resolve => {
+	const frontEndStarted = new Promise(resolve => {
+		global.__FRONTEND__.stdout.once('data', data => {
+			console.log('Frontend started');
+			resolve('started');
+		});
+	});
+
+	
+	const timeOutMain = new Promise(resolve => {
 		setTimeout(() => {
-			resolve('timeout');
-		}, 5000); 
+			throw new Error('main proxy timeout');
+			// resolve('timeout');
+		}, timeout);
 	});
 
-	// Wait for either the server to start or the timeout.
-	const result = await Promise.race([serverStarted, timeout]);
-	if (result === 'timeout') {
-		console.log('Timeout reached, assuming the server is already running or stuck starting.');
-	}
+	
+	const timeOutFE = new Promise(resolve => {
+		setTimeout(() => {
+			throw new Error('front end timeout');
+			// resolve('timeout');
+		}, timeout);
+	});
 
-	// We resolve anyway after the timeout or if the server starts.
+	const started = await Promise.all([mainServerStarted, frontEndStarted]);
+	await sleep(2000);
+	console.log('starting tests...\n\n');
+
+
+
+	
 };
 
+
+
+function sleep(ms) {
+	return new Promise(resolve => setTimeout(resolve, ms));
+}

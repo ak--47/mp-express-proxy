@@ -3,8 +3,9 @@ const kill = require('tree-kill');
 const { promisify } = require('util');
 module.exports = async () => {
 	console.log('\n\nStopping test server...\n\n');
-	const pid = global.__SERVER__.pid;
 	const killAsync = promisify(kill);
+	
+	const pid = global.__SERVER__.pid;
 	await killAsync(pid)
 		.then(() => console.log('Test server stopped.\n\n'))
 		.catch(error => console.error('Error stopping test server:', error));

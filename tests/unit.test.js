@@ -1,3 +1,5 @@
+/* cSpell:disable */
+//@ts-nocheck
 const { parseSDKData } = require('../components/parser');
 
 describe('PARSING', () => {

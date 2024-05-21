@@ -1,5 +1,6 @@
 {
 	"jest.jestCommandLine": "npm run test --",
-	"jest.runMode": "on-demand"
+	"jest.runMode": "on-demand",
+	"js/ts.implicitProjectConfig.checkJs": true
   }
   

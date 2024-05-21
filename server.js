@@ -4,9 +4,9 @@
 // DEPENDENCIES
 const express = require('express');
 const app = express();
+const { createProxyMiddleware } = require('http-proxy-middleware');
 const bodyParser = require('body-parser');
 const fetch = require('fetch-retry')(global.fetch);
-const setupProxy = require('./components/proxyConfig');
 const setupCORS = require('./components/corsConfig');
 const { parseSDKData } = require('./components/parser');
 const { version } = require('./package.json');
@@ -27,11 +27,11 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.text({ type: 'text/plain' }));
 setupCORS(app, FRONTEND_URL);
-setupProxy(app, RUNTIME);
 
 // REGION
 const BASE_URL = `https://api${REGION?.toUpperCase() === "EU" ? '-eu' : ''}.mixpanel.com`;
 if (!MIXPANEL_TOKEN && RUNTIME !== "prod") console.error('MIXPANEL_TOKEN is not set; this is required to run the proxy server. Please set it as an environment variable.');
+const SESSION_RECORDING_URL = `https://api-js.mixpanel.com/record`;
 
 
 // ROUTES
@@ -44,6 +44,45 @@ app.post('/groups', async (req, res) => await handleMixpanelData('groups', req, 
 app.all('/', (req, res) => res.status(200).json({ status: "OK" }));
 app.all('/ping', (req, res) => res.status(200).json({ status: "OK", message: "pong", version }));
 app.all('/decide', (req, res) => res.status(299).send({ error: "the /decide endpoint is deprecated" }));
+
+// PROXIES
+app.use('/lib.min.js', createProxyMiddleware({
+	target: 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js',
+	changeOrigin: true,
+	pathRewrite: { '^/lib.min.js': '' },
+	logLevel: RUNTIME === "prod" ? "error" : "debug"
+}));
+
+app.use('/lib.js', createProxyMiddleware({
+	target: 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.js',
+	changeOrigin: true,
+	pathRewrite: { '^/lib.js': '' },
+	logLevel: RUNTIME === "prod" ? "error" : "debug"
+}));
+
+// session recording
+app.use('/record', createProxyMiddleware({
+	target: SESSION_RECORDING_URL,
+	changeOrigin: true,
+	pathRewrite: { '^/record': '' },
+	logLevel: RUNTIME === "prod" ? "error" : "debug",
+	timeout: 60000, 
+	proxyTimeout: 60000
+	// onProxyReq: (proxyReq, req, res) => {
+	// 	// Log request details for debugging
+	// 	console.log(`proxy request to: ${proxyReq.getHeader('host')}${proxyReq.path}`);
+	// },
+	// onProxyRes: (proxyRes, req, res) => {
+	// 	// Log response details for debugging
+	// 	console.log(`proxy response from: ${proxyRes.req.getHeader('host')}${proxyRes.req.path}`);
+		
+	// },
+	// onError: (err, req, res) => {
+	// 	// Log the error details
+	// 	console.error(`Proxy error: ${err.message}`);
+	// 	res.status(500).send('Proxy error occurred.');
+	// }
+}));
 
 // RANDOM ERRORS
 app.use((err, req, res, next) => {
@@ -127,8 +166,6 @@ async function makeRequest(url, data) {
 	return response;
 }
 
-
-
 // helpers
 function pp(obj) {
 	return JSON.stringify(obj, null, 2);
@@ -145,5 +182,6 @@ function shortUrl(url) {
 module.exports = {
 	parseSDKData,
 	makeRequest,
-	handleMixpanelData
+	handleMixpanelData,
+	server
 };
