@@ -36,7 +36,7 @@ Resources:
     Type: 'AWS::Serverless::Function'
     Properties:
       Handler: handler.handler
-      CodeUri: ../ # Set to the directory containing your package.json
+      CodeUri: .
       Events:
         Root:
           Type: Api
@@ -48,6 +48,17 @@ Resources:
           Properties:
             Path: /{proxy+}
             Method: ANY
+    Metadata:
+      # BuildMethod: nodejs14.x
+      aws:asset:exclude:
+        - node_modules/**
+        - tests/**
+        - demo/**
+        - performance/**
+        - scripts/**
+        - Dockerfile
+        - README.md
+        - app.json
 
 Outputs:
   ApiUrl:
