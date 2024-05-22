@@ -47,6 +47,8 @@ if [ ! -f package.json ]; then
   exit 1
 fi
 
+# run the code through es-build
+npm run build:lambda 
 
 # Install the AWS SAM CLI if not already installed (uncomment if needed)
 # brew tap aws/tap
@@ -55,19 +57,6 @@ fi
 # Build the SAM application using the custom template file
 sam build --template-file lambda.yml
 
-# Deploy the SAM application using the custom template file and parameters
-# sam deploy --template-file lambda.yml \
-#   --stack-name mixpanel-proxy-stack \
-#   --capabilities CAPABILITY_IAM \
-#   --resolve-s3 \
-#   --parameter-overrides \
-#     MixpanelToken=${MIXPANEL_TOKEN} \
-#     FrontendUrl=${FRONTEND_URL} \
-#     Runtime=${RUNTIME} \
-#     Region=${REGION} \
-#     Platform=${PLATFORM}
-
-# Alternatively, you can use the guided deploy command to interactively set the parameters
 sam deploy --guided --template-file lambda.yml \
   --stack-name mixpanel-proxy-stack \
   --capabilities CAPABILITY_IAM \

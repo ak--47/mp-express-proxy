@@ -35,8 +35,8 @@ Resources:
   MixpanelProxyFunction:
     Type: 'AWS::Serverless::Function'
     Properties:
-      Handler: handler.handler
-      CodeUri: .
+      Handler: lambda.handler
+      CodeUri: lambda
       Events:
         Root:
           Type: Api
@@ -59,6 +59,7 @@ Resources:
         - README.md
         - app.json
         - package-lock.json
+        - dist/**
 
 Outputs:
   ApiUrl:

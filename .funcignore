@@ -11,3 +11,5 @@ README.md
 node_modules
 .git
 .prettierrc
+lambda
+samconfig.toml
