@@ -12,6 +12,7 @@
 		"deploy:cloudrun": "./scripts/gcp-run-deploy.sh",
 		"deploy:cloudfunc": "./scripts/gcp-func-deploy.sh",
 		"build:lambda": "esbuild server.js --bundle --platform=node --target=node20 --outfile=lambda/lambda.js",
+		"run:lambda": "sam local start-api --port 3000 --template ./lambda.yml",
 		"deploy:aws": "./scripts/aws-deploy.sh",
 		"deploy:azure": "./scripts/aure-deploy.sh"
 	},
