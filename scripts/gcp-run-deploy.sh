@@ -1,4 +1,8 @@
 #!/bin/bash
+
+# shellcheck disable=SC1091
+source .env
+
 gcloud config set run/region us-central1
 # docker build -t express-proxy .
 docker buildx build --platform linux/amd64 -t express-proxy .

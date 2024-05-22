@@ -10,3 +10,4 @@ app.json
 README.md
 node_modules
 .git
+.prettierrc
