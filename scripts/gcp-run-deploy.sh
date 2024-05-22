@@ -1,3 +1,8 @@
+#!/bin/bash
+
+# shellcheck disable=SC1091
+source .env
+
 gcloud config set run/region us-central1
 # docker build -t express-proxy .
 docker buildx build --platform linux/amd64 -t express-proxy .
@@ -8,5 +13,5 @@ gcloud run deploy express-proxy \
   --platform managed \
   --project mixpanel-gtm-training \
   --allow-unauthenticated \
-  --set-env-vars MIXPANEL_TOKEN=none,FRONTEND_URL=none,RUNTIME=prod,REGION=US
+  --set-env-vars MIXPANEL_TOKEN=none,FRONTEND_URL=none,RUNTIME=prod,REGION=US,PLATFORM='cloud_run'
 

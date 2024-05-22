@@ -1,2 +1,7 @@
 .env
 node_modules
+scripts/.aws-sam
+.aws-sam
+.prettierrc
+lambda
+samconfig.toml
