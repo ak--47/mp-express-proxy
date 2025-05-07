@@ -51,6 +51,13 @@ app.use('/record', createProxyMiddleware({
 	logLevel: RUNTIME === "prod" ? "error" : "debug",
 }));
 
+app.use('/flags', createProxyMiddleware({
+	target: BASE_URL,
+	changeOrigin: true,
+	pathRewrite: { '^/flags': '/flags' },
+	logLevel: RUNTIME === "prod" ? "error" : "debug",
+}))
+
 // PARSERS
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));

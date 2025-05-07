@@ -2,11 +2,13 @@
 //@ts-nocheck
 const u = require('ak-tools');
 const { version } = require('../package.json');
-
+require('dotenv').config();
+const MIXPANEL_TOKEN = process.env.MIXPANEL_TOKEN || "";
+if (!MIXPANEL_TOKEN) console.error('MIXPANEL_TOKEN is not set;');
 const timeout = 30000;
 
 describe('DATA', () => {
-	test('POST /track (json)', async () => {
+	test('POST /track (form)', async () => {
 		const response = await fetch('http://localhost:8080/track', {
 			method: 'POST',
 			headers: {
@@ -18,7 +20,7 @@ describe('DATA', () => {
 		expect(data).toEqual({ error: null, status: 1 });
 	});
 
-	test('POST /track (form)', async () => {
+	test('POST /track (json)', async () => {
 		const payload = { "event": "look no token!", "properties": { "$os": "Mac OS X", "$browser": "Chrome", "$current_url": "http://localhost:3000/", "$browser_version": 122, "$screen_height": 1080, "$screen_width": 1920, "mp_lib": "web", "$lib_version": "2.49.0", "$insert_id": "6vufqscyx36h4h5v", "time": Date.now(), "distinct_id": "$device:18dfa610897264-06d57d796ce8f8-1d525637-1fa400-18dfa610897264", "$device_id": "18dfa610897264-06d57d796ce8f8-1d525637-1fa400-18dfa610897264", "$initial_referrer": "$direct", "$initial_referring_domain": "$direct", "token": "" } };
 		const response = await fetch('http://localhost:8080/track', {
 			method: 'POST',
@@ -213,155 +215,175 @@ describe('PROXY', () => {
 	}, timeout);
 
 
-});
-
-describe('BROWSER', () => {
-	const puppeteer = require("puppeteer");
-	const DEV_URL = "http://localhost:3000";
-
-	let browser;
-	const timeout = 100000;
-
-	beforeAll(async () => {
-		browser = await puppeteer.launch({
-			headless: true,
-			args: [],
+	test('POST /flags', async () => {
+		const data = { "context": { "distinct_id": "$device:196a85e7428526-0f4c120960a42b-1a525636-1fa400-196a85e7429527" } };
+		const epxectedResponse = {
+			"code": 200,
+			"flags": {},
+			"status": "OK"
+		};
+		const response = await fetch('http://localhost:8080/flags', {
+			method: 'POST',
+			body: JSON.stringify(data),
+			headers: {
+				'Authorization': `Basic ${Buffer.from(`${MIXPANEL_TOKEN}:`).toString('base64')}`,
+			}
 		});
+		const body = await response.json();
+		expect(body).toEqual(epxectedResponse);
+		expect(response.status).toEqual(200);
 
-		// New page to get extension ID
-		// const page = await browser.newPage();
-		// await page.goto(DEV_URL);
-		// await page.waitForSelector("body");
-		// await page.close();
+
 	});
 
-	afterAll(async () => {
-		await browser.close();
-	});
+	describe('BROWSER', () => {
+		const puppeteer = require("puppeteer");
+		const DEV_URL = "http://localhost:3000";
 
-	const passMessages = ["mixpanel has loaded", "MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):", "JSHandle@object", "[batch] MIXPANEL REQUEST: JSHandle@array", "[batch] Flush: Request already in progress"];
-	const failMessages = ["Access to XMLHttpRequest at"];
-	const goodUrls = ["http://localhost:3000", "http://localhost:8080/lib.min.js", "http://localhost:8080/lib.js", "http://localhost:8080/track", "http://localhost:8080/engage", "http://localhost:8080/record", "http://localhost:3000/favicon.ico"];
+		let browser;
+		const timeout = 100000;
 
-	//side fx
-	const attachPageListeners = (page) => {
-		page.hits = 0;
-		page.on("console", (msg) => {
-			if (passMessages.includes(msg.text())) page.hits++;
-			if (failMessages.includes(msg.text())) debugger;
-			expect(passMessages).toContain(msg.text());
-			expect(failMessages).not.toContain(msg.text());
+		beforeAll(async () => {
+			browser = await puppeteer.launch({
+				headless: true,
+				args: [],
+			});
 
+			// New page to get extension ID
+			// const page = await browser.newPage();
+			// await page.goto(DEV_URL);
+			// await page.waitForSelector("body");
+			// await page.close();
 		});
 
-		page.on("request", request => {
-			let requestUrl = request.url();
-			requestUrl = requestUrl.split("?").shift();
-			if (requestUrl.endsWith("/")) requestUrl = requestUrl.slice(0, -1);
-			if (request.method() === "POST") {
-				if (!goodUrls.includes(requestUrl)) debugger;
-				expect(goodUrls).toContain(requestUrl);
-				if (request.postData()) {
-					//post data should EITHER be a stringified JSON object OR a base64 encoded stringified JSON object
-					const startsWithData = request.postData().startsWith("data=");
-					const isJSON = u.isJSONStr(request.postData());
-					expect(startsWithData || isJSON).toBe(true);
+		afterAll(async () => {
+			await browser.close();
+		});
+
+		const passMessages = ["mixpanel has loaded", "MIXPANEL PEOPLE REQUEST (QUEUED, PENDING IDENTIFY):", "JSHandle@object", "[batch] MIXPANEL REQUEST: JSHandle@array", "[batch] Flush: Request already in progress"];
+		const failMessages = ["Access to XMLHttpRequest at"];
+		const goodUrls = ["http://localhost:3000", "http://localhost:8080/lib.min.js", "http://localhost:8080/lib.js", "http://localhost:8080/track", "http://localhost:8080/engage", "http://localhost:8080/record", "http://localhost:3000/favicon.ico"];
+
+		//side fx
+		const attachPageListeners = (page) => {
+			page.hits = 0;
+			page.on("console", (msg) => {
+				if (passMessages.includes(msg.text())) page.hits++;
+				if (failMessages.includes(msg.text())) debugger;
+				expect(passMessages).toContain(msg.text());
+				expect(failMessages).not.toContain(msg.text());
+
+			});
+
+			page.on("request", request => {
+				let requestUrl = request.url();
+				requestUrl = requestUrl.split("?").shift();
+				if (requestUrl.endsWith("/")) requestUrl = requestUrl.slice(0, -1);
+				if (request.method() === "POST") {
+					if (!goodUrls.includes(requestUrl)) debugger;
+					expect(goodUrls).toContain(requestUrl);
+					if (request.postData()) {
+						//post data should EITHER be a stringified JSON object OR a base64 encoded stringified JSON object
+						const startsWithData = request.postData().startsWith("data=");
+						const isJSON = u.isJSONStr(request.postData());
+						expect(startsWithData || isJSON).toBe(true);
+					}
+
+				}
+				if (request.method() === "GET") {
+					if (!goodUrls.includes(requestUrl)) debugger;
+					expect(goodUrls).toContain(requestUrl);
+
 				}
 
-			}
-			if (request.method() === "GET") {
-				if (!goodUrls.includes(requestUrl)) debugger;
-				expect(goodUrls).toContain(requestUrl);
 
-			}
+			});
 
+			page.on("response", response => {
+				let responseUrl = response.url();
+				responseUrl = responseUrl.split("?").shift();
+				if (responseUrl.endsWith("/")) responseUrl = responseUrl.slice(0, -1);
+				if (!goodUrls.includes(responseUrl)) debugger;
+				expect(goodUrls).toContain(responseUrl);
 
-		});
+			});
 
-		page.on("response", response => {
-			let responseUrl = response.url();
-			responseUrl = responseUrl.split("?").shift();
-			if (responseUrl.endsWith("/")) responseUrl = responseUrl.slice(0, -1);
-			if (!goodUrls.includes(responseUrl)) debugger;
-			expect(goodUrls).toContain(responseUrl);
-
-		});
-
-		page.on("requestfailed", request => {
-			debugger;
-			throw new Error(`Request failed: ${request.url()}`);
-		});
-
-		page.on("requestfinished", async request => {
-			const response = await request.response();
-			let responseUrl = response.url();
-			responseUrl = responseUrl.split("?").shift();
-			if (responseUrl.endsWith("/")) responseUrl = responseUrl.slice(0, -1);
-			expect(goodUrls).toContain(responseUrl);
-			if (!goodUrls.includes(responseUrl)) debugger;
-			if (responseUrl.includes('localhost:8080') && request.method() === 'POST') {
-				//this is a mixpanel request
-				//todo some more checks
+			page.on("requestfailed", request => {
 				debugger;
-			}
-		});
-	};
+				throw new Error(`Request failed: ${request.url()}`);
+			});
+
+			page.on("requestfinished", async request => {
+				const response = await request.response();
+				let responseUrl = response.url();
+				responseUrl = responseUrl.split("?").shift();
+				if (responseUrl.endsWith("/")) responseUrl = responseUrl.slice(0, -1);
+				expect(goodUrls).toContain(responseUrl);
+				if (!goodUrls.includes(responseUrl)) debugger;
+				if (responseUrl.includes('localhost:8080') && request.method() === 'POST') {
+					//this is a mixpanel request
+					//todo some more checks
+					debugger;
+				}
+			});
+		};
 
 
-	test("page renders", async () => {
-		const page = await browser.newPage();
-		attachPageListeners(page);
-		await page.goto(DEV_URL);
-		const title = await page.title();
-		const expectedTitle = "mixpanel token hiding proxy";
-		const expectedHero = "let's test our proxy in real-life!";
-		const hero = await page.evaluate(() => {
-			const h1 = document.querySelector("h1");
-			return h1 ? h1.textContent : null;
-		});
-		expect(title).toBe(expectedTitle);
-		expect(hero).toBe(expectedHero);
-	}, timeout);
+		test("page renders", async () => {
+			const page = await browser.newPage();
+			attachPageListeners(page);
+			await page.goto(DEV_URL);
+			const title = await page.title();
+			const expectedTitle = "mixpanel token hiding proxy";
+			const expectedHero = "let's test our proxy in real-life!";
+			const hero = await page.evaluate(() => {
+				const h1 = document.querySelector("h1");
+				return h1 ? h1.textContent : null;
+			});
+			expect(title).toBe(expectedTitle);
+			expect(hero).toBe(expectedHero);
+		}, timeout);
 
 
-	test("mixpanel loads", async () => {
-		const page = await browser.newPage();
-		attachPageListeners(page);
-		page.on("console", (msg) => {
-			expect(passMessages).toContain(msg.text());
-			expect(failMessages).not.toContain(msg.text());
-			if (failMessages.includes(msg.text())) debugger;
-		});
-		await page.goto(DEV_URL);
-		await page.waitForSelector("body");
-	}, timeout);
+		test("mixpanel loads", async () => {
+			const page = await browser.newPage();
+			attachPageListeners(page);
+			page.on("console", (msg) => {
+				expect(passMessages).toContain(msg.text());
+				expect(failMessages).not.toContain(msg.text());
+				if (failMessages.includes(msg.text())) debugger;
+			});
+			await page.goto(DEV_URL);
+			await page.waitForSelector("body");
+		}, timeout);
 
-	test("button click", async () => {
-		const page = await browser.newPage();
-		attachPageListeners(page);
-		await page.goto(DEV_URL);
-		await page.waitForSelector("#clickMe");
-		await page.click("#clickMe");
-		await sleep(100);
-		await page.click("#dontClickMe");
-		expect(page.hits).toBeGreaterThan(3);
-	}, timeout);
+		test("button click", async () => {
+			const page = await browser.newPage();
+			attachPageListeners(page);
+			await page.goto(DEV_URL);
+			await page.waitForSelector("#clickMe");
+			await page.click("#clickMe");
+			await sleep(100);
+			await page.click("#dontClickMe");
+			expect(page.hits).toBeGreaterThan(3);
+		}, timeout);
 
 
-	test("identify + engage", async () => {
-		const page = await browser.newPage();
-		attachPageListeners(page);
-		await page.goto(DEV_URL);
-		await page.waitForSelector("#profileSet");
-		await page.click("#profileSet");
-		await sleep(100);
-		await page.click("#identify");
-		expect(page.hits).toBeGreaterThan(6);
-	}, timeout);
+		test("identify + engage", async () => {
+			const page = await browser.newPage();
+			attachPageListeners(page);
+			await page.goto(DEV_URL);
+			await page.waitForSelector("#profileSet");
+			await page.click("#profileSet");
+			await sleep(100);
+			await page.click("#identify");
+			expect(page.hits).toBeGreaterThan(6);
+		}, timeout);
 
+	});
+
+
+	function sleep(ms) {
+		return new Promise(resolve => setTimeout(resolve, ms));
+	}
 });
-
-
-function sleep(ms) {
-	return new Promise(resolve => setTimeout(resolve, ms));
-}
