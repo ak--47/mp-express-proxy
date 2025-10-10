@@ -26,9 +26,9 @@ if (MIXPANEL_TOKEN === "none") MIXPANEL_TOKEN = "";
 let PLATFORM = process.env.PLATFORM?.toUpperCase() || 'LOCAL';
 
 // MIDDLEWARE + REGIONS
-setupCORS(app, FRONTEND_URL);
+setupCORS(app);
 const BASE_URL = `https://api${REGION?.toUpperCase() === "EU" ? '-eu' : ''}.mixpanel.com`;
-if (!MIXPANEL_TOKEN && RUNTIME !== "prod") console.error('MIXPANEL_TOKEN is not set; this is required to run the proxy server. Please set it as an environment variable.');
+// if (!MIXPANEL_TOKEN && RUNTIME !== "prod") console.error('MIXPANEL_TOKEN is not set; this is required to run the proxy server. Please set it as an environment variable.');
 
 app.use('/lib.min.js', createProxyMiddleware({
 	target: 'https://cdn.mxpnl.com/libs/mixpanel-2-latest.min.js',
@@ -56,7 +56,10 @@ app.use('/flags', createProxyMiddleware({
 	changeOrigin: true,
 	pathRewrite: { '^/flags': '/flags' },
 	logLevel: RUNTIME === "prod" ? "error" : "debug",
-}))
+}));
+
+
+
 
 // PARSERS
 app.use(bodyParser.json());

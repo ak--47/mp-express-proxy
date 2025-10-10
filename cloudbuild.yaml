@@ -1,0 +1,53 @@
+steps:
+  # Build the container image
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'build'
+      - '--platform=linux/amd64'
+      - '--build-arg=NODE_ENV=production'
+      - '-t'
+      - '${_ARTIFACT_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${_TAG}'
+      - '.'
+
+  # Push the container image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args:
+      - 'push'
+      - '${_ARTIFACT_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${_TAG}'
+
+  # Deploy to Cloud Run
+  - name: 'gcr.io/cloud-builders/gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - '${_SERVICE}'
+      - '--image=${_ARTIFACT_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${_TAG}'
+      - '--project=$PROJECT_ID'
+      - '--region=${_CLOUD_RUN_REGION}'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--concurrency=80'
+      - '--memory=512Mi'
+      - '--update-env-vars=RUNTIME=prod'
+    env:
+      - 'MIXPANEL_TOKEN=${_MIXPANEL_TOKEN}'
+      - 'FRONTEND_URL=${_FRONTEND_URL}'
+      - 'REGION=${_REGION}'
+
+# Substitution variables
+substitutions:
+  _SERVICE: 'express-proxy'
+  _REPO: 'express-proxy-repo'
+  _TAG: 'latest'
+  _CLOUD_RUN_REGION: 'us-central1'
+  _ARTIFACT_LOCATION: 'us-central1'
+  _MIXPANEL_TOKEN: ''
+  _FRONTEND_URL: ''
+  _REGION: ''
+
+# Container image will be stored in Artifact Registry
+images:
+  - '${_ARTIFACT_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${_TAG}'
+
+options:
+  logging: CLOUD_LOGGING_ONLY

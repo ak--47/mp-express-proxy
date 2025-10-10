@@ -1,28 +1,30 @@
-module.exports = function (app, FRONTEND_URL = "") {
-	// CORS Middleware
-	app.use((req, res, next) => {
-		res.header('Access-Control-Allow-Origin', FRONTEND_URL || req.headers.origin || "*");
-		res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-		res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-		res.header('Access-Control-Allow-Credentials', 'true');
-		if (!FRONTEND_URL) {
-			// Most permissive CSP headers (unsafe)
-			res.header('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' *; connect-src *; img-src * data:; style-src 'unsafe-inline' *;");
-		}
-		next();
-	});
+module.exports = function (app) {
+  function varyAppend(res, val) {
+    const cur = res.getHeader('Vary');
+    res.setHeader('Vary', cur ? `${cur}, ${val}` : val);
+  }
 
-	// CORS Options
-	app.options('*', (req, res) => {
-		res.header('Access-Control-Allow-Origin',  FRONTEND_URL || req.headers.origin || "*");
-		res.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-		res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-		res.header('Access-Control-Allow-Credentials', 'true');
-		if (!FRONTEND_URL) {
-			// Most permissive CSP headers (unsafe)
-			res.header('Content-Security-Policy', "default-src 'none'; script-src 'unsafe-inline' 'unsafe-eval' *; connect-src *; img-src * data:; style-src 'unsafe-inline' *;");
-		}
-		res.sendStatus(200);
-	});
+  app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (origin) {
+      res.header('Access-Control-Allow-Origin', origin); // reflect
+      varyAppend(res, 'Origin');
+      res.header('Access-Control-Allow-Credentials', 'true'); // SDK uses credentials
+    }
 
+    if (req.method === 'OPTIONS') {
+      // Echo back exactly what the browser asked to use
+      const reqMethod  = req.headers['access-control-request-method'] || 'GET,POST,OPTIONS';
+      const reqHeaders = req.headers['access-control-request-headers'] || '';
+      res.header('Access-Control-Allow-Methods', reqMethod + ',OPTIONS');
+      if (reqHeaders) {
+        res.header('Access-Control-Allow-Headers', reqHeaders);
+        varyAppend(res, 'Access-Control-Request-Headers');
+      }
+      res.header('Access-Control-Max-Age', '600');
+      return res.status(204).end(); // no body
+    }
+
+    next();
+  });
 };
