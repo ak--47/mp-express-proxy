@@ -62,9 +62,9 @@ app.use('/flags', createProxyMiddleware({
 
 
 // PARSERS
-app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(bodyParser.text({ type: 'text/plain' }));
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+app.use(bodyParser.text({ type: 'text/plain', limit: '10mb' }));
 
 // CATCHING ERRORS
 app.use((err, req, res, next) => {
