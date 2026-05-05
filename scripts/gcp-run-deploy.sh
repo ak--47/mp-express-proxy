@@ -57,10 +57,6 @@ if ! gcloud artifacts repositories list \
     --project="$PROJECT"
 fi
 
-# Configure Docker to use gcloud creds
-echo "🔒 Configuring Docker credential helper for ${ARTIFACT_LOCATION}-docker.pkg.dev…"
-gcloud auth configure-docker "${ARTIFACT_LOCATION}-docker.pkg.dev" --quiet
-
 # ───────────────────────────────────────────────
 # 4️⃣  Build & push the image via Cloud Build
 # ───────────────────────────────────────────────
