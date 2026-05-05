@@ -9,6 +9,15 @@
 			"restart": true,
 			"console": "integratedTerminal",
 			"internalConsoleOptions": "neverOpen"
+		},
+		{
+			"type": "node",
+			"request": "launch",
+			"name": "deploy:cloudrun",
+			"runtimeExecutable": "bash",
+			"args": ["${workspaceFolder}/scripts/gcp-run-deploy.sh"],
+			"console": "integratedTerminal",
+			"internalConsoleOptions": "neverOpen"
 		}
 	]
 }
