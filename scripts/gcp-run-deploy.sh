@@ -62,14 +62,13 @@ echo "🔒 Configuring Docker credential helper for ${ARTIFACT_LOCATION}-docker.
 gcloud auth configure-docker "${ARTIFACT_LOCATION}-docker.pkg.dev" --quiet
 
 # ───────────────────────────────────────────────
-# 4️⃣  Build & push the image in one step
+# 4️⃣  Build & push the image via Cloud Build
 # ───────────────────────────────────────────────
-echo "🐳 Building & pushing ${IMAGE}…"
-docker buildx build \
-  --platform linux/amd64 \
-  --build-arg NODE_ENV=production \
+echo "🐳 Building ${IMAGE} via Cloud Build…"
+gcloud builds submit \
+  --project "$PROJECT" \
+  --region "$ARTIFACT_LOCATION" \
   --tag "$IMAGE" \
-  --push \
   .
 
 # ───────────────────────────────────────────────
