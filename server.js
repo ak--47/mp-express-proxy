@@ -122,6 +122,13 @@ async function handleMixpanelData(type, req, res) {
 	if (!req.body) return res.status(400).send('No data provided');
 
 	const data = parseSDKData(req.body?.data || req.body);
+
+	// TEMP DEBUG — what token/event the SDK actually sent. grep "PROXYDBG".
+	try {
+		const r = Array.isArray(data) ? data[0] : data;
+		console.log(`PROXYDBG ${type} n=${Array.isArray(data) ? data.length : 1} token=${r?.properties?.token || r?.$token || 'NONE'} event=${r?.event || ''}`);
+	} catch (e) {}
+
 	const endUserIp = req.headers['x-forwarded-for'] || req?.socket?.remoteAddress || req?.connection?.remoteAddress;
 
 	// mutate the data
@@ -173,6 +180,8 @@ async function makeRequest(url, data) {
 
 	const { status = 0, statusText = "" } = request;
 	const response = await request.json();
+
+	console.log(`PROXYDBG resp ${shortUrl(url)} -> ${JSON.stringify(response).slice(0, 140)}`);
 
 	if (RUNTIME === 'dev') console.log(`got ${status} ${statusText} from ${shortUrl(url)}:\n${pp(response)} ${sep()}`);
 
