@@ -146,6 +146,25 @@ describe('PROXY', () => {
 	});
 
 
+	test('GET /libs/<custom-build>.js', async () => {
+		const response = await fetch('http://localhost:8080/libs/mixpanel-2.83.0-ve-alpha-1.min.js', {
+			method: 'GET'
+		});
+		const contentType = response.headers.get('content-type');
+		const text = await response.text();
+		expect(response.status).toEqual(200);
+		expect(contentType).toMatch(/javascript/);
+		expect(text.length).toBeGreaterThan(1000);
+	});
+
+	test('GET /libs/<bad-path> is rejected', async () => {
+		const response = await fetch('http://localhost:8080/libs/%2e%2e%2f%2e%2e%2fetc/passwd', {
+			method: 'GET'
+		});
+		expect(response.status).toEqual(400);
+	});
+
+
 	test('GET /decide', async () => {
 		const response = await fetch('http://localhost:8080/decide', {
 			method: 'GET'

@@ -44,6 +44,18 @@ app.use('/lib.js', createProxyMiddleware({
 	logLevel: RUNTIME === "prod" ? "error" : "debug"
 }));
 
+// custom SDK builds: /libs/mixpanel-2.83.0-ve-alpha-1.min.js -> https://cdn.mxpnl.com/libs/mixpanel-2.83.0-ve-alpha-1.min.js
+const LIB_FILE = /^\/libs\/[A-Za-z0-9._-]+\.js(\.map)?$/;
+app.use('/libs', (req, res, next) => {
+	const path = (req.originalUrl || req.url).split('?')[0];
+	if (!LIB_FILE.test(path)) return res.status(400).send('invalid lib path');
+	next();
+}, createProxyMiddleware({
+	target: 'https://cdn.mxpnl.com',
+	changeOrigin: true,
+	logLevel: RUNTIME === "prod" ? "error" : "debug"
+}));
+
 app.use('/record', createProxyMiddleware({
 	target: BASE_URL,
 	changeOrigin: true,
