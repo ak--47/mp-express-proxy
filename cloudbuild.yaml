@@ -40,11 +40,11 @@ substitutions:
   _TAG: 'latest'
   _CLOUD_RUN_REGION: 'us-central1'
   _ARTIFACT_LOCATION: 'us-central1'
-  # Defaults match the live service (express-proxy-00037). Empty MIXPANEL_TOKEN = forced-token mode off.
+  # Defaults match the live service (express-proxy-00037), except max instances lowered 100 -> 20. Empty MIXPANEL_TOKEN = forced-token mode off.
   _MIXPANEL_TOKEN: ''
   _FRONTEND_URL: ''
   _REGION: 'US'
-  _MAX_INSTANCES: '100'
+  _MAX_INSTANCES: '20'
 
 # Container image will be stored in Artifact Registry
 images:
