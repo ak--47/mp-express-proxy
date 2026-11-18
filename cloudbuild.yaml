@@ -28,11 +28,10 @@ steps:
       - '--allow-unauthenticated'
       - '--concurrency=80'
       - '--memory=512Mi'
-      - '--update-env-vars=RUNTIME=prod'
-    env:
-      - 'MIXPANEL_TOKEN=${_MIXPANEL_TOKEN}'
-      - 'FRONTEND_URL=${_FRONTEND_URL}'
-      - 'REGION=${_REGION}'
+      - '--max-instances=${_MAX_INSTANCES}'
+      # Runtime env for the service. '^@^' sets '@' as the list separator so values may contain commas.
+      # --set-env-vars replaces the full env set, so this list is the complete live config.
+      - '--set-env-vars=^@^MIXPANEL_TOKEN=${_MIXPANEL_TOKEN}@FRONTEND_URL=${_FRONTEND_URL}@REGION=${_REGION}@RUNTIME=prod@PLATFORM=cloud_run'
 
 # Substitution variables
 substitutions:
@@ -41,9 +40,11 @@ substitutions:
   _TAG: 'latest'
   _CLOUD_RUN_REGION: 'us-central1'
   _ARTIFACT_LOCATION: 'us-central1'
+  # Defaults match the live service (express-proxy-00037). Empty MIXPANEL_TOKEN = forced-token mode off.
   _MIXPANEL_TOKEN: ''
   _FRONTEND_URL: ''
-  _REGION: ''
+  _REGION: 'US'
+  _MAX_INSTANCES: '100'
 
 # Container image will be stored in Artifact Registry
 images:
