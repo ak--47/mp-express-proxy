@@ -35,7 +35,7 @@ Customers do not use this deployment in production. Mixpanel project tokens are 
 
 **Cost and abuse limits.**
 - Body size: 10 MB per request on `/track`, `/engage`, `/groups` (body parser limit). The proxy does not parse `/record` and `/flags`, so only the Cloud Run request limit (32 MiB) applies.
-- Max instances: 100 (`--max-instances`), with concurrency 80, 1 vCPU and 512 MiB each. This caps the Cloud Run cost of a traffic spike.
+- Max instances: 20 (`--max-instances`; 30-day peak was 9), with concurrency 80, 1 vCPU and 512 MiB each. This caps the Cloud Run cost of a traffic spike.
 - No rate limit in the proxy.
 - The proxy adds no read access beyond the public Mixpanel SDK endpoints. Abuse can add junk data to a Mixpanel project. It cannot read project data out.
 
