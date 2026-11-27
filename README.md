@@ -47,6 +47,7 @@ To use this server, you need to set the following environment variables:
 You can optionally set the following environment variables:
 - `PORT`: the port the server will listen on (default: 8080)
 - `REGION`: `US` or `EU` if using [EU data residency](https://docs.mixpanel.com/docs/privacy/eu-residency) (default is **US**)
+- `SLACK_ALERT_WEBHOOK_URL`: Slack incoming webhook for error alerts (`components/slackAlerts.js`). Posts only in production on Cloud Run (`RUNTIME=prod` + `K_SERVICE`). `cloudbuild.yaml` injects it from Secret Manager (`fde-slack-alert-webhook`). Alerts carry the route, status and error only, never event payloads, tokens, headers or query strings, and are sent after the response (no added latency).
 
 check `deploy.sh` for an example of how to deploy this server to google cloud run or use the deploy button below!
 
