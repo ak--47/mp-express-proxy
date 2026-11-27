@@ -15,6 +15,17 @@ steps:
       - 'push'
       - '${_ARTIFACT_LOCATION}-docker.pkg.dev/$PROJECT_ID/${_REPO}/${_SERVICE}:${_TAG}'
 
+  # Warn (never fail) when the Slack alert webhook secret has no enabled version.
+  # Reads metadata only, never the value. Alerts stay off until the secret exists.
+  - name: 'gcr.io/cloud-builders/gcloud'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        if ! gcloud secrets versions describe latest --secret=fde-slack-alert-webhook --project=$PROJECT_ID --format='value(state)' 2>/dev/null | grep -q ENABLED; then
+          echo "WARNING: secret fde-slack-alert-webhook has no enabled version (or is unreadable from Cloud Build); Slack error alerts will not post."
+        fi
+
   # Deploy to Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
     args:
@@ -32,6 +43,9 @@ steps:
       # Runtime env for the service. '^@^' sets '@' as the list separator so values may contain commas.
       # --set-env-vars replaces the full env set, so this list is the complete live config.
       - '--set-env-vars=^@^MIXPANEL_TOKEN=${_MIXPANEL_TOKEN}@FRONTEND_URL=${_FRONTEND_URL}@REGION=${_REGION}@RUNTIME=prod@PLATFORM=cloud_run'
+      # Slack error alerts (#fde) from Secret Manager. --set-env-vars above only replaces plain
+      # env vars; this secret-backed var is managed separately and survives it.
+      - '--update-secrets=SLACK_ALERT_WEBHOOK_URL=fde-slack-alert-webhook:latest'
 
 # Substitution variables
 substitutions:
